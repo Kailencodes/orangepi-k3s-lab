@@ -12,3 +12,7 @@ not access my router to check it)
 - Set up Git on orange pi using git config username and password as well as ssh gen keys.
 - cloned the repo I made on github and tested first commits, created journal and playbooks folders.
 - Installed btop to check temps and load on orange pi (btop is so cool)
+- install ansible, set up ssh key gen.
+- create first inventory file with localhost 
+- use ping command `ansible -i inventory.yml -m ping all` to check if the playbook worked.
+if reply ping:pong is true it worked.

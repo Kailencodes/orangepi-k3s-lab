@@ -1,41 +1,41 @@
 name: Deploy Home Lab
 
-#Trigger: Run this pipeline when code is pushed to the 'main' branch
-on: 
-  push: 
+# Trigger: Run this pipeline when code is pushed to the 'main' branch
+on:
+  push:
     branches: [ "main" ]
 
 jobs:
-  configure-node: 
-  runs-on: self-hosted # tells github to use my orange Pi not cloud servers
+  configure-node:
+    runs-on: self-hosted  # FIXED: Indented to be inside 'configure-node'
 
-  steps: 
-  # Step 1: Pull the latest code from GitHub
-  - name: Checkout Code
-    uses: actions/checkout@v3
+    steps:
+      # Step 1: Pull the latest code from GitHub
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-    # Step 2: Ensure Ansible is installed (in case fresh start later)
-  - name: Install Ansible
-    run: |
-    if ! command -v ansible &> /dev/null; then
-      echo "Ansible not found. Installing..."
-      sudo apt-get update
-      sudo apt-get install -y ansible
-    fi
+      # Step 2: Ensure Ansible is installed
+      - name: Install Ansible
+        run: |  # FIXED: The script below is now properly indented
+          if ! command -v ansible &> /dev/null; then
+            echo "Ansible not found. Installing..."
+            sudo apt-get update
+            sudo apt-get install -y ansible
+          fi
 
-    #Step 3: Create a temporary password file from the GitHub secret
-  - name: Create Vault Pass File
-    run: echo "${{ secrets.VAULT_PASS }}" > .vault_pass
+      # Step 3: Create a temporary password file
+      - name: Create Vault Pass File
+        run: echo "${{ secrets.VAULT_PASS }}" > .vault_pass
 
-  #Step 4: Run the tailscale playbook
-  - name: Run Tailscale Playbook
-  run: |
-  cd playbooks
-  ansible-playbooks tailscale.yml --vault-password-file ../vault_pass
-  env:
-   ANSIBLE_FORCE_COLOR: '1' #make log look good
+      # Step 4: Run the Tailscale Playbook
+      - name: Run Tailscale Playbook
+        run: |  # FIXED: Indented block
+          cd playbooks
+          ansible-playbook tailscale.yml --vault-password-file ../.vault_pass
+        env:
+          ANSIBLE_FORCE_COLOR: '1'
 
- #Step 5: Clean up password file for good practice
-- name: Cleanup secets 
-  if: always() #runs even if other steps failed
-  run: rm -f .vault_pass
+      # Step 5: Clean up the password file
+      - name: Cleanup Secrets
+        if: always()
+        run: rm -f .vault_pass

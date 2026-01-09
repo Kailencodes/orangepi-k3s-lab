@@ -14,16 +14,17 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Step 2: Ensure Ansible is installed (Force Latest Version via Pip)
+      # Step 2: Force Install Latest Ansible (Fixes 'end_role' error)
       - name: Install Ansible
         run: |
-          if ! command -v ansible &> /dev/null; then
-            echo "Installing Ansible via Pip..."
-            sudo apt-get update
-            sudo apt-get install -y python3-pip
-            # We use --break-system-packages to force the install on Debian 12
-            sudo pip3 install ansible --break-system-packages
-          fi
+          echo "Removing old Ansible..."
+          sudo apt-get remove -y ansible
+          sudo apt-get autoremove -y
+          
+          echo "Installing fresh Ansible via Pip..."
+          sudo apt-get update
+          sudo apt-get install -y python3-pip
+          sudo pip3 install ansible --break-system-packages
       # Step 3: Create a temporary password file
       - name: Create Vault Pass File
         run: echo "${{ secrets.VAULT_PASS }}" > .vault_pass

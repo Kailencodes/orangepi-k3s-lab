@@ -36,6 +36,7 @@ jobs:
           ansible-playbook tailscale.yml --vault-password-file ../.vault_pass
         env:
           ANSIBLE_FORCE_COLOR: '1'
+          ANSIBLE_ALLOW_BROKEN_CONDITIONALS: 'true'
 
       # Step 5: Clean up the password file
       - name: Cleanup Secrets

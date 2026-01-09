@@ -1,0 +1,14 @@
+--- 
+- name: Automate Tailscale Setup
+  hosts: localhost
+  connection: local
+  become: yes
+  vars_files:
+   - secrets.yml
+
+  roles: 
+   - role: artis3n.tailscale
+     vars: 
+       tailscale_authkey: "ksHBNATqRE11CNTRL-N59CxYwwBPeJnGwWH6sGNenpP85dV4592"
+       tailscale_args: "--hostname=orangepi-cicd --advertise-exit-node --reset"
+       tailscale_up_skip: false

@@ -1,5 +1,6 @@
 # inventory.yml
-all: 
+k3s_master: 
    hosts:
       localhost:
              ansible_connection: local
+             ansible_user: orangepi

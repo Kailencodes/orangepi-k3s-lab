@@ -1,0 +1,9 @@
+--- 
+- name: Provision K3s on Orange Pi
+  hosts: k3s_master
+  become: true
+  vars: 
+   ansible_user: "orangepi"
+  roles:
+   - k3s
+

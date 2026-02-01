@@ -1,4 +1,4 @@
-# generated with google gemini
+#used google gemini to update the github action to build multi architecture images not amd64 only 
 
 name: Build and Push Image
 
@@ -6,7 +6,7 @@ on:
   push:
     branches: [ "main" ]
     paths:
-      - 'app/**'             # Only run if we change the app
+      - 'app/**'
       - '.github/workflows/**'
 
 env:
@@ -24,6 +24,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # CRITICAL: Add QEMU to allow building for ARM (Orange Pi)
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Log in to the Container registry
         uses: docker/login-action@v3
         with:
@@ -37,6 +44,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
+            type=raw,value=latest
             type=sha,format=long
 
       - name: Build and push Docker image
@@ -46,3 +54,5 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          # THIS IS THE FIX: Build for both standard PC and Orange Pi
+          platforms: linux/amd64,linux/arm64

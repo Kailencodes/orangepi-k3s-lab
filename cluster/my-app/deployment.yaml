@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: web
-          image: ghcr.io/kailencodes/orangepi-k3s-lab:sha-977297555cc2a161cf527e4ed573730a4dbb7d93
+          image: ghcr.io/kailencodes/orangepi-k3s-lab:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 80

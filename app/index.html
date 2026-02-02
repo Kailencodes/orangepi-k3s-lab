@@ -1,45 +1,819 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <style> 
-    p{
-        color: white;
-        font-family: Verdana, Geneva, Tahoma, sans-serif;
-    }
-    body{
-        color: bisque;
-    }
-    h1{
-        font-family: Verdana, Geneva, Tahoma, sans-serif;
-    }
-    </style>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Krakow Dashboard</title>
+    <title>KRAKOW // NETWORK MONITOR</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Archivo:wght@300;400;600;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #000000;
+            --accent: #ff0000;
+            --secondary: #ffffff;
+            --gray: #999999;
+            --light-gray: #e0e0e0;
+            --dark-gray: #333333;
+        }
+
+        body {
+            font-family: 'Archivo', sans-serif;
+            background: var(--primary);
+            color: var(--secondary);
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Noise texture overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='3.5' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            opacity: 0.03;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .scanline {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                to bottom,
+                transparent 50%,
+                rgba(255, 0, 0, 0.02) 51%,
+                transparent 52%
+            );
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 2;
+            animation: scanline 8s linear infinite;
+        }
+
+        @keyframes scanline {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(100%); }
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 40px 60px;
+            position: relative;
+            z-index: 3;
+        }
+
+        /* Header */
+        .header {
+            border-bottom: 2px solid var(--secondary);
+            padding-bottom: 30px;
+            margin-bottom: 60px;
+            animation: slideDown 0.8s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 15px;
+        }
+
+        .site-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 6rem;
+            letter-spacing: 0.05em;
+            font-weight: 400;
+            line-height: 0.9;
+            position: relative;
+        }
+
+        .site-title span {
+            color: var(--accent);
+        }
+
+        .status-badge {
+            font-family: 'Archivo', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 300;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            padding: 8px 20px;
+            border: 1px solid var(--secondary);
+            background: transparent;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .header-subtitle {
+            font-size: 1rem;
+            font-weight: 300;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--gray);
+        }
+
+        .header-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            font-weight: 300;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            margin-top: 20px;
+            color: var(--gray);
+        }
+
+        /* Grid Layout */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 30px;
+            animation: fadeIn 1s ease-out 0.3s backwards;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .module {
+            border: 1px solid var(--secondary);
+            padding: 30px;
+            position: relative;
+            background: rgba(255, 255, 255, 0.02);
+            transition: all 0.3s ease;
+        }
+
+        .module:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: var(--accent);
+        }
+
+        .module::before {
+            content: '';
+            position: absolute;
+            top: -1px;
+            left: -1px;
+            right: -1px;
+            bottom: -1px;
+            background: linear-gradient(135deg, var(--accent) 0%, transparent 50%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        .module:hover::before {
+            opacity: 0.1;
+        }
+
+        .module-hero {
+            grid-column: span 12;
+            padding: 50px;
+            border-width: 2px;
+        }
+
+        .module-large {
+            grid-column: span 6;
+        }
+
+        .module-medium {
+            grid-column: span 4;
+        }
+
+        .module-small {
+            grid-column: span 3;
+        }
+
+        .module-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 2rem;
+            letter-spacing: 0.08em;
+            margin-bottom: 25px;
+            border-bottom: 1px solid var(--dark-gray);
+            padding-bottom: 10px;
+        }
+
+        .module-hero .module-title {
+            font-size: 3rem;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.95rem;
+        }
+
+        .data-row:last-child {
+            border-bottom: none;
+        }
+
+        .data-label {
+            font-weight: 300;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--gray);
+            font-size: 0.8rem;
+        }
+
+        .data-value {
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            font-family: 'Archivo', monospace;
+            color: var(--secondary);
+        }
+
+        .data-value.highlight {
+            color: var(--accent);
+            font-weight: 900;
+        }
+
+        /* Big numbers */
+        .stat-hero {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .stat-number {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 6rem;
+            line-height: 1;
+            letter-spacing: 0.05em;
+            color: var(--accent);
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            font-weight: 300;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--gray);
+        }
+
+        /* Status indicator */
+        .status-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--accent);
+            margin-right: 10px;
+            animation: blink 1.5s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .status-dot.online {
+            background: #00ff00;
+        }
+
+        .status-dot.warning {
+            background: #ffff00;
+        }
+
+        .status-dot.offline {
+            background: var(--accent);
+        }
+
+        /* List items */
+        .list-item {
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+        }
+
+        .list-item:last-child {
+            border-bottom: none;
+        }
+
+        .list-label {
+            font-weight: 300;
+            color: var(--gray);
+        }
+
+        .list-value {
+            font-weight: 600;
+            font-family: 'Archivo', monospace;
+        }
+
+        /* Graph placeholder */
+        .graph-area {
+            height: 200px;
+            background: repeating-linear-gradient(
+                90deg,
+                transparent,
+                transparent 50px,
+                rgba(255, 255, 255, 0.05) 50px,
+                rgba(255, 255, 255, 0.05) 51px
+            );
+            position: relative;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+
+        .graph-line {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--accent);
+            transform-origin: left;
+            animation: drawLine 2s ease-out forwards;
+        }
+
+        @keyframes drawLine {
+            from {
+                width: 0;
+            }
+            to {
+                width: 100%;
+            }
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 80px;
+            padding-top: 30px;
+            border-top: 1px solid var(--secondary);
+            text-align: center;
+            font-size: 0.75rem;
+            font-weight: 300;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--gray);
+        }
+
+        /* Loading state */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 2rem;
+            letter-spacing: 0.1em;
+            color: var(--gray);
+            animation: fadeInOut 1.5s ease-in-out infinite;
+        }
+
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .module-large,
+            .module-medium,
+            .module-small {
+                grid-column: span 6;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 30px;
+            }
+
+            .site-title {
+                font-size: 3.5rem;
+            }
+
+            .module-hero,
+            .module-large,
+            .module-medium,
+            .module-small {
+                grid-column: span 12;
+            }
+
+            .header-meta {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .stat-number {
+                font-size: 4rem;
+            }
+        }
+    </style>
 </head>
 <body>
-    <header>
-        <h1>All tools</h1>
-        <p> An automatic network monitoring system built by kailencodes</p>
-    </header>
-    <nav>
-        <ul>
-            <li><a href="index.html">Home</a></li>
-            <li><a href="portscanner.html">Port Scanner</a></li>
-        </ul>
-    </nav>
-    <main>
-        <section>
-            <h2>About this page</h2>
-            <p>Filler content</p>
-        </section>
-        <article>
-            <h2>latest update</h2>
-            <p>content here</p>
-        </article>
-    </main>
-    <footer>
-        <p>&copy; 2026 Kailencodes/Network Monitor Dashboard</p>
-    </footer>
+    <div class="scanline"></div>
+    
+    <div class="container">
+        <header class="header">
+            <div class="header-top">
+                <h1 class="site-title">KRAKOW<span>//</span></h1>
+                <div class="status-badge">MONITORING</div>
+            </div>
+            <p class="header-subtitle">Orange Pi Zero Network Monitor</p>
+            <div class="header-meta">
+                <span id="device-status">STATUS: <span class="status-dot online"></span>ONLINE</span>
+                <span id="last-update">LAST UPDATE: --:--:--</span>
+            </div>
+        </header>
+
+        <div class="dashboard-grid">
+            <!-- Hero Stats -->
+            <div class="module module-hero" id="hero-stats">
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 30px;">
+                    <div class="stat-hero">
+                        <div class="stat-number" id="cpu-stat">--</div>
+                        <div class="stat-label">CPU Usage %</div>
+                    </div>
+                    <div class="stat-hero">
+                        <div class="stat-number" id="mem-stat">--</div>
+                        <div class="stat-label">Memory %</div>
+                    </div>
+                    <div class="stat-hero">
+                        <div class="stat-number" id="uptime-stat">--</div>
+                        <div class="stat-label">Days Uptime</div>
+                    </div>
+                    <div class="stat-hero">
+                        <div class="stat-number" id="conn-stat">--</div>
+                        <div class="stat-label">Connections</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Info -->
+            <div class="module module-large" id="system-info">
+                <h2 class="module-title">System</h2>
+                <div class="loading">Loading...</div>
+            </div>
+
+            <!-- Network Status -->
+            <div class="module module-large" id="network-status">
+                <h2 class="module-title">Network</h2>
+                <div class="loading">Loading...</div>
+            </div>
+
+            <!-- Traffic -->
+            <div class="module module-medium" id="network-traffic">
+                <h2 class="module-title">Traffic</h2>
+                <div class="loading">Loading...</div>
+            </div>
+
+            <!-- Bandwidth -->
+            <div class="module module-medium" id="bandwidth">
+                <h2 class="module-title">Bandwidth</h2>
+                <div class="loading">Loading...</div>
+            </div>
+
+            <!-- Resources -->
+            <div class="module module-medium" id="resources">
+                <h2 class="module-title">Resources</h2>
+                <div class="loading">Loading...</div>
+            </div>
+
+            <!-- Connections -->
+            <div class="module module-small" id="connections">
+                <h2 class="module-title">Conn</h2>
+                <div class="loading">Loading...</div>
+            </div>
+
+            <!-- Active Processes -->
+            <div class="module module-small" id="processes">
+                <h2 class="module-title">Process</h2>
+                <div class="loading">Loading...</div>
+            </div>
+
+            <!-- Network Graph -->
+            <div class="module module-large" id="network-graph">
+                <h2 class="module-title">Network Activity</h2>
+                <div class="graph-area">
+                    <div class="graph-line"></div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="footer">
+            <p>Krakow Network Monitor © 2026 // Orange Pi Zero</p>
+        </footer>
+    </div>
+
+    <script>
+        // Configuration
+        const DATA_URL = 'network_data.json';
+        const REFRESH_INTERVAL = 5000;
+
+        // Utility functions
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        function formatUptime(seconds) {
+            const days = Math.floor(seconds / 86400);
+            const hours = Math.floor((seconds % 86400) / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            return { days, hours, minutes, formatted: `${days}D ${hours}H ${minutes}M` };
+        }
+
+        // Update hero stats
+        function updateHeroStats(data) {
+            if (data.resources) {
+                document.getElementById('cpu-stat').textContent = 
+                    Math.round(data.resources.cpu_percent || 0);
+                document.getElementById('mem-stat').textContent = 
+                    Math.round(data.resources.memory_percent || 0);
+            }
+
+            if (data.system && data.system.uptime) {
+                const uptime = formatUptime(data.system.uptime);
+                document.getElementById('uptime-stat').textContent = uptime.days;
+            }
+
+            if (data.connections) {
+                document.getElementById('conn-stat').textContent = 
+                    data.connections.total || 0;
+            }
+        }
+
+        // Update system info
+        function updateSystemInfo(data) {
+            const container = document.getElementById('system-info');
+            if (!data.system) {
+                container.innerHTML = '<h2 class="module-title">System</h2><div class="loading">No Data</div>';
+                return;
+            }
+
+            container.innerHTML = `
+                <h2 class="module-title">System</h2>
+                <div class="data-row">
+                    <span class="data-label">Hostname</span>
+                    <span class="data-value">${data.system.hostname || 'N/A'}</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Operating System</span>
+                    <span class="data-value">${data.system.os || 'N/A'}</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">IP Address</span>
+                    <span class="data-value highlight">${data.system.ip || 'N/A'}</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Uptime</span>
+                    <span class="data-value">${data.system.uptime ? formatUptime(data.system.uptime).formatted : 'N/A'}</span>
+                </div>
+            `;
+        }
+
+        // Update network status
+        function updateNetworkStatus(data) {
+            const container = document.getElementById('network-status');
+            if (!data.network) {
+                container.innerHTML = '<h2 class="module-title">Network</h2><div class="loading">No Data</div>';
+                return;
+            }
+
+            const status = data.network.status || 'unknown';
+            let dotClass = 'offline';
+            if (status === 'online') dotClass = 'online';
+            else if (status === 'degraded') dotClass = 'warning';
+
+            container.innerHTML = `
+                <h2 class="module-title">Network</h2>
+                <div class="data-row">
+                    <span class="data-label">Status</span>
+                    <span class="data-value">
+                        <span class="status-dot ${dotClass}"></span>
+                        ${status.toUpperCase()}
+                    </span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Interface</span>
+                    <span class="data-value">${data.network.interface || 'N/A'}</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">MAC Address</span>
+                    <span class="data-value">${data.network.mac || 'N/A'}</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Gateway</span>
+                    <span class="data-value highlight">${data.network.gateway || 'N/A'}</span>
+                </div>
+            `;
+        }
+
+        // Update traffic
+        function updateTraffic(data) {
+            const container = document.getElementById('network-traffic');
+            if (!data.traffic) {
+                container.innerHTML = '<h2 class="module-title">Traffic</h2><div class="loading">No Data</div>';
+                return;
+            }
+
+            container.innerHTML = `
+                <h2 class="module-title">Traffic</h2>
+                <div class="list-item">
+                    <span class="list-label">Sent</span>
+                    <span class="list-value">${formatBytes(data.traffic.bytes_sent || 0)}</span>
+                </div>
+                <div class="list-item">
+                    <span class="list-label">Received</span>
+                    <span class="list-value">${formatBytes(data.traffic.bytes_recv || 0)}</span>
+                </div>
+                <div class="list-item">
+                    <span class="list-label">Packets Sent</span>
+                    <span class="list-value">${(data.traffic.packets_sent || 0).toLocaleString()}</span>
+                </div>
+                <div class="list-item">
+                    <span class="list-label">Packets Recv</span>
+                    <span class="list-value">${(data.traffic.packets_recv || 0).toLocaleString()}</span>
+                </div>
+            `;
+        }
+
+        // Update bandwidth
+        function updateBandwidth(data) {
+            const container = document.getElementById('bandwidth');
+            if (!data.bandwidth) {
+                container.innerHTML = '<h2 class="module-title">Bandwidth</h2><div class="loading">No Data</div>';
+                return;
+            }
+
+            container.innerHTML = `
+                <h2 class="module-title">Bandwidth</h2>
+                <div class="list-item">
+                    <span class="list-label">Upload</span>
+                    <span class="list-value">${formatBytes(data.bandwidth.upload_speed || 0)}/s</span>
+                </div>
+                <div class="list-item">
+                    <span class="list-label">Download</span>
+                    <span class="list-value">${formatBytes(data.bandwidth.download_speed || 0)}/s</span>
+                </div>
+                <div class="list-item">
+                    <span class="list-label">Peak Up</span>
+                    <span class="list-value">${formatBytes(data.bandwidth.peak_upload || 0)}/s</span>
+                </div>
+                <div class="list-item">
+                    <span class="list-label">Peak Down</span>
+                    <span class="list-value">${formatBytes(data.bandwidth.peak_download || 0)}/s</span>
+                </div>
+            `;
+        }
+
+        // Update resources
+        function updateResources(data) {
+            const container = document.getElementById('resources');
+            if (!data.resources) {
+                container.innerHTML = '<h2 class="module-title">Resources</h2><div class="loading">No Data</div>';
+                return;
+            }
+
+            container.innerHTML = `
+                <h2 class="module-title">Resources</h2>
+                <div class="list-item">
+                    <span class="list-label">CPU Usage</span>
+                    <span class="list-value">${data.resources.cpu_percent || 0}%</span>
+                </div>
+                <div class="list-item">
+                    <span class="list-label">CPU Cores</span>
+                    <span class="list-value">${data.resources.cpu_cores || 'N/A'}</span>
+                </div>
+                <div class="list-item">
+                    <span class="list-label">Memory</span>
+                    <span class="list-value">${data.resources.memory_percent || 0}%</span>
+                </div>
+                <div class="list-item">
+                    <span class="list-label">Used / Total</span>
+                    <span class="list-value">${formatBytes(data.resources.memory_used || 0)} / ${formatBytes(data.resources.memory_total || 0)}</span>
+                </div>
+            `;
+        }
+
+        // Update connections
+        function updateConnections(data) {
+            const container = document.getElementById('connections');
+            if (!data.connections) {
+                container.innerHTML = '<h2 class="module-title">Conn</h2><div class="loading">No Data</div>';
+                return;
+            }
+
+            container.innerHTML = `
+                <h2 class="module-title">Conn</h2>
+                <div class="list-item">
+                    <span class="list-label">Total</span>
+                    <span class="list-value">${data.connections.total || 0}</span>
+                </div>
+                <div class="list-item">
+                    <span class="list-label">Established</span>
+                    <span class="list-value">${data.connections.established || 0}</span>
+                </div>
+                <div class="list-item">
+                    <span class="list-label">Listening</span>
+                    <span class="list-value">${data.connections.listening || 0}</span>
+                </div>
+                <div class="list-item">
+                    <span class="list-label">Wait</span>
+                    <span class="list-value">${data.connections.time_wait || 0}</span>
+                </div>
+            `;
+        }
+
+        // Update processes (placeholder)
+        function updateProcesses(data) {
+            const container = document.getElementById('processes');
+            container.innerHTML = `
+                <h2 class="module-title">Process</h2>
+                <div class="list-item">
+                    <span class="list-label">Active</span>
+                    <span class="list-value">${data.processes?.active || '--'}</span>
+                </div>
+                <div class="list-item">
+                    <span class="list-label">Sleeping</span>
+                    <span class="list-value">${data.processes?.sleeping || '--'}</span>
+                </div>
+                <div class="list-item">
+                    <span class="list-label">Threads</span>
+                    <span class="list-value">${data.processes?.threads || '--'}</span>
+                </div>
+            `;
+        }
+
+        // Fetch data
+        async function fetchData() {
+            try {
+                const response = await fetch(DATA_URL);
+                if (!response.ok) throw new Error('Failed to fetch');
+                
+                const data = await response.json();
+                
+                updateHeroStats(data);
+                updateSystemInfo(data);
+                updateNetworkStatus(data);
+                updateTraffic(data);
+                updateBandwidth(data);
+                updateResources(data);
+                updateConnections(data);
+                updateProcesses(data);
+                
+                const now = new Date();
+                document.getElementById('last-update').textContent = 
+                    `LAST UPDATE: ${now.toLocaleTimeString()}`;
+                
+                // Update status badge
+                const statusText = data.network?.status || 'unknown';
+                document.getElementById('device-status').innerHTML = 
+                    `STATUS: <span class="status-dot ${statusText === 'online' ? 'online' : 'offline'}"></span>${statusText.toUpperCase()}`;
+            } catch (error) {
+                console.error('Fetch error:', error);
+                document.getElementById('last-update').textContent = 
+                    `LAST UPDATE: ERROR`;
+            }
+        }
+
+        // Initialize
+        fetchData();
+        setInterval(fetchData, REFRESH_INTERVAL);
+    </script>
 </body>
 </html>

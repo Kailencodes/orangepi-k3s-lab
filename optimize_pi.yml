@@ -1,0 +1,46 @@
+---
+- name: Stabilize Orange Pi Zero 3
+  hosts: all
+  become: yes
+  tasks:
+    - name: Create 2GB Swap File
+      command: fallocate -l 2G /swapfile
+      args:
+        creates: /swapfile
+
+    - name: Set Swap File permissions
+      file:
+        path: /swapfile
+        owner: root
+        group: root
+        mode: '0600'
+
+    - name: Check if swap is already enabled
+      shell: swapon --show | grep -q '/swapfile'
+      register: swap_enabled
+      ignore_errors: true
+      changed_when: false
+
+    - name: Format Swap File
+      command: mkswap /swapfile
+      when: swap_enabled.rc != 0
+
+    - name: Enable Swap File
+      command: swapon /swapfile
+      when: swap_enabled.rc != 0
+
+    - name: Ensure Swap is permanent in fstab
+      mount:
+        name: none
+        src: /swapfile
+        fstype: swap
+        opts: sw
+        passno: 0
+        dump: 0
+        state: present
+
+    - name: Set Swappiness to 10
+      sysctl:
+        name: vm.swappiness
+        value: '10'
+        state: present

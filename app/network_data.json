@@ -1,0 +1,38 @@
+{
+    "system": {
+        "ip": "192.168.2.50",
+        "hostname": "krakow",
+        "os": "Armbian / K3s",
+        "uptime": 1284330.480334282
+    },
+    "resources": {
+        "cpu_percent": 0.8,
+        "memory_percent": 83.6,
+        "memory_used": 1216659456,
+        "memory_total": 1555415040,
+        "cpu_cores": 4
+    },
+    "traffic": {
+        "bytes_sent": 5688000916,
+        "bytes_recv": 6087536595,
+        "packets_sent": 26349800,
+        "packets_recv": 28792385
+    },
+    "connections": {
+        "total": 67
+    },
+    "scan_results": [
+        {
+            "port": 22,
+            "status": "OPEN"
+        },
+        {
+            "port": 6443,
+            "status": "OPEN"
+        }
+    ],
+    "network": {
+        "status": "online",
+        "interface": "eth0"
+    }
+}

@@ -386,21 +386,13 @@
             container.innerHTML = `<h2 class="module-title">System</h2>
                 <div class="data-row"><span class="data-label">Hostname</span><span class="data-value">${data.system.hostname || 'N/A'}</span></div>
                 <div class="data-row"><span class="data-label">Operating System</span><span class="data-value">${data.system.os || 'N/A'}</span></div>
-                <div class="data-row"><span class="data-label">IP Address</span><span class="data-value highlight">${data.system.ip || 'N/A'}</span></div>
+                <div class="data-row"><span class="data-label">IP Address</span><span class="data-value highlight">[REDACTED]</span></div>
                 <div class="data-row"><span class="data-label">Uptime</span><span class="data-value">${data.system.uptime ? formatUptime(data.system.uptime).formatted : 'N/A'}</span></div>`;
         }
 
         function updateScanResults(data) {
             const container = document.getElementById('scan-list');
-            if (!data.scan_results || data.scan_results.length === 0) {
-                container.innerHTML = '<div class="list-item"><span class="list-label">No active scans</span></div>';
-                return;
-            }
-            container.innerHTML = data.scan_results.map(res => `
-                <div class="list-item">
-                    <span class="list-label">PORT ${res.port}</span>
-                    <span class="list-value highlight">${res.status}</span>
-                </div>`).join('');
+            container.innerHTML = '<div class="list-item"><span class="list-label">HIDDEN</span></div>';
         }
 
         function updateNetworkStatus(data) {
@@ -410,7 +402,7 @@
             container.innerHTML = `<h2 class="module-title">Network</h2>
                 <div class="data-row"><span class="data-label">Status</span><span class="data-value"><span class="status-dot ${status === 'online' ? 'online' : 'offline'}"></span>${status.toUpperCase()}</span></div>
                 <div class="data-row"><span class="data-label">Interface</span><span class="data-value">${data.network.interface || 'N/A'}</span></div>
-                <div class="data-row"><span class="data-label">Gateway</span><span class="data-value highlight">${data.network.gateway || 'N/A'}</span></div>`;
+                <div class="data-row"><span class="data-label">Gateway</span><span class="data-value highlight">[REDACTED]</span></div>`;
         }
 
         function updateTraffic(data) {

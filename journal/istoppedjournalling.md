@@ -1,4 +1,4 @@
-# Stopped jounralling
+# Stopped journaling
 
 ## kept working on network scanner
 - created port scanner

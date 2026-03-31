@@ -410,7 +410,6 @@
             container.innerHTML = `<h2 class="module-title">Network</h2>
                 <div class="data-row"><span class="data-label">Status</span><span class="data-value"><span class="status-dot ${status === 'online' ? 'online' : 'offline'}"></span>${status.toUpperCase()}</span></div>
                 <div class="data-row"><span class="data-label">Interface</span><span class="data-value">${data.network.interface || 'N/A'}</span></div>
-                <div class="data-row"><span class="data-label">MAC Address</span><span class="data-value">${data.network.mac || 'N/A'}</span></div>
                 <div class="data-row"><span class="data-label">Gateway</span><span class="data-value highlight">${data.network.gateway || 'N/A'}</span></div>`;
         }
 

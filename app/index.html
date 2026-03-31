@@ -239,19 +239,22 @@
         .status-dot.offline { background: var(--accent); }
 
         .graph-area {
-            height: 200px;
-            background: repeating-linear-gradient(90deg, transparent, transparent 50px, rgba(255, 255, 255, 0.05) 50px, rgba(255, 255, 255, 0.05) 51px);
+            height: 180px;
+            background: repeating-linear-gradient(90deg, transparent, transparent 50px, rgba(255, 255, 255, 0.04) 50px, rgba(255, 255, 255, 0.04) 51px);
             position: relative;
             margin-top: 20px;
             overflow: hidden;
         }
 
-        .graph-line {
-            position: absolute; bottom: 0; left: 0; width: 100%; height: 2px; background: var(--accent);
-            transform-origin: left; animation: drawLine 2s ease-out forwards;
+        .graph-legend {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+            font-size: 0.75rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--gray);
         }
-
-        @keyframes drawLine { from { width: 0; } to { width: 100%; } }
 
         .footer { margin-top: 80px; padding-top: 30px; border-top: 1px solid var(--secondary); text-align: center; font-size: 0.75rem; font-weight: 300; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gray); }
         .loading { text-align: center; padding: 40px; font-family: 'Bebas Neue', sans-serif; font-size: 2rem; letter-spacing: 0.1em; color: var(--gray); animation: fadeInOut 1.5s ease-in-out infinite; }
@@ -328,9 +331,14 @@
                 <div class="loading">Loading...</div>
             </div>
 
-            <div class="module module-large" id="network-graph">
+            <div class="module" style="grid-column: span 12;" id="network-graph">
                 <h2 class="module-title">Network Activity</h2>
-                <div class="graph-area"><div class="graph-line"></div></div>
+                <div class="graph-area" id="graph-canvas"></div>
+                <div class="graph-legend">
+                    <span style="color: var(--accent);">— Upload</span>
+                    <span style="color: rgba(255,255,255,0.5);">— Download</span>
+                    <span id="graph-max" style="margin-left: auto;"></span>
+                </div>
             </div>
         </div>
 
@@ -425,9 +433,13 @@
         function updateResources(data) {
             const container = document.getElementById('resources');
             if (!data.resources) return;
+            const memUsed = formatBytes(data.resources.memory_used || 0);
+            const memTotal = formatBytes(data.resources.memory_total || 0);
             container.innerHTML = `<h2 class="module-title">Resources</h2>
                 <div class="list-item"><span class="list-label">CPU</span><span class="list-value">${data.resources.cpu_percent || 0}%</span></div>
-                <div class="list-item"><span class="list-label">MEM</span><span class="list-value">${data.resources.memory_percent || 0}%</span></div>`;
+                <div class="list-item"><span class="list-label">MEM</span><span class="list-value">${data.resources.memory_percent || 0}%</span></div>
+                <div class="list-item"><span class="list-label">Used</span><span class="list-value">${memUsed} / ${memTotal}</span></div>
+                <div class="list-item"><span class="list-label">Cores</span><span class="list-value">${data.resources.cpu_cores || '--'}</span></div>`;
         }
 
         function updateConnections(data) {
@@ -441,6 +453,35 @@
             const container = document.getElementById('processes');
             container.innerHTML = `<h2 class="module-title">Process</h2>
                 <div class="list-item"><span class="list-label">Active</span><span class="list-value">${data.processes?.active || '--'}</span></div>`;
+        }
+
+        function updateNetworkGraph(data) {
+            const canvas = document.getElementById('graph-canvas');
+            const maxLabel = document.getElementById('graph-max');
+            if (!data.history || data.history.length < 2) return;
+
+            const history = data.history;
+            const maxVal = Math.max(1, ...history.map(h => Math.max(h.up, h.down)));
+            const n = history.length;
+
+            const toX = i => ((i / (n - 1)) * 100).toFixed(2);
+            const toY = v => (100 - (v / maxVal) * 90 - 5).toFixed(2);
+
+            const upPoints = history.map((h, i) => `${toX(i)},${toY(h.up)}`).join(' ');
+            const downPoints = history.map((h, i) => `${toX(i)},${toY(h.down)}`).join(' ');
+
+            // Build filled area paths
+            const upAreaClose = ` ${toX(n - 1)},100 0,100`;
+            const downAreaClose = ` ${toX(n - 1)},100 0,100`;
+
+            canvas.innerHTML = `<svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;top:0;left:0;">
+                <polygon points="${upPoints} ${upAreaClose}" fill="rgba(255,0,0,0.1)" />
+                <polyline points="${upPoints}" fill="none" stroke="var(--accent)" stroke-width="0.6" vector-effect="non-scaling-stroke" />
+                <polygon points="${downPoints} ${downAreaClose}" fill="rgba(255,255,255,0.05)" />
+                <polyline points="${downPoints}" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="0.6" vector-effect="non-scaling-stroke" />
+            </svg>`;
+
+            if (maxLabel) maxLabel.textContent = `PEAK: ${formatBytes(maxVal)}/s`;
         }
 
         async function fetchData() {
@@ -457,7 +498,8 @@
                 updateResources(data);
                 updateConnections(data);
                 updateProcesses(data);
-                updateScanResults(data); // Properly triggered now
+                updateScanResults(data);
+                updateNetworkGraph(data);
                 
                 const now = new Date();
                 document.getElementById('last-update').textContent = `LAST UPDATE: ${now.toLocaleTimeString()}`;

@@ -19,6 +19,15 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 80
+          volumeMounts:
+            # Mounting the folder to /data inside the pod
+            - name: scanner-data
+              mountPath: /usr/share/nginx/html/data
+      volumes:
+        - name: scanner-data
+          hostPath:
+            path: /home/orangepi/orangepi-k3s-lab/app
+            type: Directory
 ---
 apiVersion: v1
 kind: Service
@@ -32,5 +41,5 @@ spec:
     - protocol: TCP
       port: 80
       targetPort: 80
-      nodePort: 30080  # This manually sets the port to 30080
-  type: NodePort       # Changed from LoadBalancer to NodePort
+      nodePort: 30080
+  type: NodePort

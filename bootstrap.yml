@@ -1,0 +1,265 @@
+---
+# Bootstrap playbook for Krakow — Orange Pi K3s Lab
+# Run this on a fresh Debian Bookworm ARM64 SBC to fully restore the project.
+#
+# Usage (remote):  ansible-playbook -i hosts.ini bootstrap.yml -K
+# Usage (local):   ansible-playbook -i "localhost," -c local bootstrap.yml -K
+#
+# Prerequisites on the target machine:
+#   - Debian Bookworm (ARM64)
+#   - SSH access (or run locally)
+#   - sudo privileges
+#   - This repo cloned at /home/orangepi/orangepi-k3s-lab
+
+- name: Bootstrap Orange Pi K3s Lab
+  hosts: all
+  become: yes
+  vars:
+    ansible_user: orangepi
+    repo_path: "/home/{{ ansible_user }}/orangepi-k3s-lab"
+    k3s_version: ""  # Leave empty for latest, or pin e.g. "v1.34.3+k3s1"
+
+  tasks:
+
+    # ─── System Updates & Prerequisites ─────────────────────────────────────
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install system prerequisites
+      apt:
+        name:
+          - curl
+          - git
+          - jq
+          - python3
+          - python3-psutil
+          - python3-pip
+          - ca-certificates
+          - gnupg
+          - lsb-release
+          - rsync
+        state: present
+
+    # ─── Swap File ──────────────────────────────────────────────────────────
+
+    - name: Create 2GB swap file
+      command: fallocate -l 2G /swapfile
+      args:
+        creates: /swapfile
+
+    - name: Set swap file permissions
+      file:
+        path: /swapfile
+        owner: root
+        group: root
+        mode: '0600'
+
+    - name: Check if swap is already enabled
+      shell: swapon --show | grep -q '/swapfile'
+      register: swap_enabled
+      ignore_errors: true
+      changed_when: false
+
+    - name: Format swap file
+      command: mkswap /swapfile
+      when: swap_enabled.rc != 0
+
+    - name: Enable swap file
+      command: swapon /swapfile
+      when: swap_enabled.rc != 0
+
+    - name: Ensure swap is permanent in fstab
+      mount:
+        name: none
+        src: /swapfile
+        fstype: swap
+        opts: sw
+        passno: 0
+        dump: 0
+        state: present
+
+    - name: Set swappiness to 10
+      sysctl:
+        name: vm.swappiness
+        value: '10'
+        state: present
+        sysctl_set: yes
+
+    # ─── log2ram ────────────────────────────────────────────────────────────
+
+    - name: Check if log2ram is installed
+      stat:
+        path: /usr/sbin/log2ram
+      register: log2ram_installed
+
+    - name: Install log2ram
+      shell: |
+        curl -Lo /tmp/log2ram.tar.gz https://github.com/azlux/log2ram/archive/refs/heads/master.tar.gz
+        tar -xzf /tmp/log2ram.tar.gz -C /tmp
+        cd /tmp/log2ram-master && bash install.sh
+        rm -rf /tmp/log2ram.tar.gz /tmp/log2ram-master
+      when: not log2ram_installed.stat.exists
+
+    - name: Configure log2ram size
+      replace:
+        path: /etc/log2ram.conf
+        regexp: '^SIZE=.*'
+        replace: 'SIZE=128M'
+      when: not log2ram_installed.stat.exists
+
+    # ─── cgroup boot config (required for K3s on Orange Pi) ─────────────────
+
+    - name: Check if cgroup flags are set in boot config
+      shell: grep -q "cgroup_enable=memory" /boot/orangepiEnv.txt 2>/dev/null || grep -q "cgroup_enable=memory" /boot/armbianEnv.txt 2>/dev/null
+      register: cgroup_set
+      ignore_errors: true
+      changed_when: false
+
+    - name: Enable cgroup memory in /boot/orangepiEnv.txt
+      replace:
+        path: /boot/orangepiEnv.txt
+        regexp: '^(.*rootwait(?!.*cgroup_enable=cpuset).*)'
+        replace: '\1 cgroup_enable=cpuset cgroup_enable=memory cgroup_memory=1'
+      register: boot_config
+      failed_when: false
+      when: cgroup_set.rc != 0
+
+    - name: Reboot if boot config changed
+      reboot:
+        reboot_timeout: 120
+      when: boot_config.changed
+
+    # ─── K3s ────────────────────────────────────────────────────────────────
+
+    - name: Install K3s
+      shell: |
+        {% if k3s_version != "" %}
+        curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}" sh -s - \
+        {% else %}
+        curl -sfL https://get.k3s.io | sh -s - \
+        {% endif %}
+          --disable traefik \
+          --disable metrics-server \
+          --write-kubeconfig-mode 644
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: Ensure K3s service is started and enabled
+      systemd:
+        name: k3s
+        state: started
+        enabled: yes
+
+    - name: Wait for K3s node to be ready
+      shell: kubectl get nodes --no-headers | grep -q "Ready"
+      retries: 20
+      delay: 10
+      register: k3s_ready
+      until: k3s_ready.rc == 0
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Create .kube directory for user
+      file:
+        path: "/home/{{ ansible_user }}/.kube"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+
+    - name: Copy kubeconfig to user home
+      copy:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: "/home/{{ ansible_user }}/.kube/config"
+        remote_src: yes
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0600'
+
+    # ─── Flux CLI ────────────────────────────────────────────────────────────
+
+    - name: Check if flux is installed
+      stat:
+        path: /usr/local/bin/flux
+      register: flux_installed
+
+    - name: Install Flux CLI
+      shell: curl -s https://fluxcd.io/install.sh | bash
+      when: not flux_installed.stat.exists
+
+    # ─── Clone repo ──────────────────────────────────────────────────────────
+
+    - name: Check if repo is already cloned
+      stat:
+        path: "{{ repo_path }}"
+      register: repo_exists
+
+    - name: Clone orangepi-k3s-lab repo
+      become_user: "{{ ansible_user }}"
+      git:
+        repo: "https://github.com/KailenCodes/orangepi-k3s-lab.git"
+        dest: "{{ repo_path }}"
+        version: main
+      when: not repo_exists.stat.exists
+
+    # ─── krakow-scanner systemd service ──────────────────────────────────────
+
+    - name: Install krakow-scanner service
+      copy:
+        src: "{{ repo_path }}/krakow-scanner.service"
+        dest: /etc/systemd/system/krakow-scanner.service
+        remote_src: yes
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Enable and start krakow-scanner service
+      systemd:
+        name: krakow-scanner
+        state: started
+        enabled: yes
+        daemon_reload: yes
+
+    # ─── Crontab ─────────────────────────────────────────────────────────────
+
+    - name: Set up crontab for orangepi user
+      become_user: "{{ ansible_user }}"
+      cron:
+        name: "{{ item.name }}"
+        minute: "{{ item.minute }}"
+        hour: "{{ item.hour }}"
+        job: "{{ item.job }}"
+      loop:
+        - name: "krakow network scanner"
+          minute: "*"
+          hour: "*"
+          job: "cd {{ repo_path }}/app && /usr/bin/python3 scanner.py"
+        - name: "cluster stats"
+          minute: "*"
+          hour: "*"
+          job: "/bin/bash {{ repo_path }}/stats.sh"
+
+    # ─── Shell aliases ────────────────────────────────────────────────────────
+
+    - name: Configure aliases in .bashrc
+      become_user: "{{ ansible_user }}"
+      blockinfile:
+        path: "/home/{{ ansible_user }}/.bashrc"
+        marker: "# {mark} ANSIBLE MANAGED ALIASES"
+        block: |
+          alias k='kubectl'
+          export CONTAINERD_ADDRESS=/run/k3s/containerd/containerd.sock
+          export KUBECONFIG=/home/{{ ansible_user }}/.kube/config
+
+    # ─── Apply K3s manifests ──────────────────────────────────────────────────
+
+    - name: Apply base K3s manifests
+      become_user: "{{ ansible_user }}"
+      shell: kubectl apply -k "{{ repo_path }}/cluster/my-app/"
+      environment:
+        KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"
+      register: kubectl_apply
+      changed_when: "'configured' in kubectl_apply.stdout or 'created' in kubectl_apply.stdout"

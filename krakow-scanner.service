@@ -1,0 +1,13 @@
+[Unit]
+Description=Krakow Network Monitor Scanner
+After=network.target
+
+[Service]
+Type=simple
+User=orangepi
+ExecStart=/bin/bash /home/orangepi/orangepi-k3s-lab/app/run_scanner.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

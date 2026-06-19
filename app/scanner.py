@@ -79,6 +79,23 @@ def get_gateway():
     return "N/A"
 
 
+def get_os():
+    """Report the actual distro so every host (Pis, desktop) reads correctly."""
+    try:
+        with open("/etc/os-release") as f:
+            kv = dict(l.strip().split("=", 1) for l in f if "=" in l)
+        name = kv.get("PRETTY_NAME", "").strip('"')
+        if name:
+            return name
+    except Exception:
+        pass
+    try:
+        import platform
+        return f"{platform.system()} {platform.release()}".strip()
+    except Exception:
+        return "unknown"
+
+
 def count_connections():
     """Count TCP sockets without root by reading /proc directly.
 
@@ -190,7 +207,7 @@ def main():
         "system": {
             "ip": local_ip,
             "hostname": socket.gethostname(),
-            "os": "Debian Bookworm / K3s" if NODE_ROLE == "monitor" else "Debian / test node",
+            "os": get_os(),
             "uptime": now - psutil.boot_time(),
         },
         "resources": {

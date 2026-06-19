@@ -6,20 +6,27 @@
 # the dashboard Pi over SSH. It does NOT install K3s and won't touch your tools.
 #
 # Usage:
-#   bash agent-install.sh <user@dashboard-ip> [node-id] ["Node Label"]
-# Example:
-#   bash agent-install.sh orangepi@192.168.8.135 recon "Recon — Test Node"
+#   bash agent-install.sh <user@dashboard-ip> [node-id] ["Node Label"] [role]
+# Examples:
+#   bash agent-install.sh orangepi@192.168.8.135 recon "Recon — Test Node" test
+#   bash agent-install.sh orangepi@192.168.8.135 desktop "Desktop PC" client
 set -euo pipefail
 
 DASH_HOST="${1:-}"
 NODE_ID="${2:-$(hostname)}"
 NODE_LABEL="${3:-$NODE_ID}"
+NODE_ROLE="${4:-client}"
 
 if [ -z "$DASH_HOST" ]; then
-  echo "Usage: bash agent-install.sh <user@dashboard-ip> [node-id] [\"Node Label\"]"
-  echo "Example: bash agent-install.sh orangepi@192.168.8.135 recon \"Recon — Test Node\""
+  echo "Usage: bash agent-install.sh <user@dashboard-ip> [node-id] [\"Node Label\"] [role]"
+  echo "Example: bash agent-install.sh orangepi@192.168.8.135 recon \"Recon — Test Node\" test"
   exit 1
 fi
+
+# The data lands in the dashboard user's repo on the monitor Pi, regardless of
+# what this local machine's username/home is.
+REMOTE_USER="${DASH_HOST%@*}"
+REMOTE_DATA="/home/${REMOTE_USER}/orangepi-k3s-lab/app/data/"
 
 REPO_URL="https://github.com/KailenCodes/orangepi-k3s-lab.git"
 REPO_DIR="$HOME/orangepi-k3s-lab"
@@ -47,7 +54,7 @@ ssh-copy-id -o StrictHostKeyChecking=accept-new "$DASH_HOST" || true
 sudo systemctl disable --now krakow-scanner 2>/dev/null || true
 
 echo ">> Installing the krakow-agent service…"
-PUSH_TARGET="${DASH_HOST}:${REPO_DIR}/app/data/"
+PUSH_TARGET="${DASH_HOST}:${REMOTE_DATA}"
 sudo tee /etc/systemd/system/krakow-agent.service >/dev/null <<EOF
 [Unit]
 Description=Krakow Monitor Agent ($NODE_ID)
@@ -59,7 +66,7 @@ Type=simple
 User=$USER
 Environment=KRAKOW_NODE_ID=$NODE_ID
 Environment=KRAKOW_NODE_LABEL=$NODE_LABEL
-Environment=KRAKOW_NODE_ROLE=test
+Environment=KRAKOW_NODE_ROLE=$NODE_ROLE
 Environment=KRAKOW_PUSH_TARGET=$PUSH_TARGET
 ExecStart=/bin/bash $APP_DIR/run_scanner.sh
 Restart=always

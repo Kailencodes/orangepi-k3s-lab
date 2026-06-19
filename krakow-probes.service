@@ -1,0 +1,14 @@
+[Unit]
+Description=Krakow Fleet Probes (router, desktop, and other agentless devices)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=orangepi
+ExecStart=/bin/bash /home/orangepi/orangepi-k3s-lab/app/run_probes.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

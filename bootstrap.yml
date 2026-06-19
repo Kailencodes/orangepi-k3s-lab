@@ -40,6 +40,7 @@
           - gnupg
           - lsb-release
           - rsync
+          - iputils-ping   # required by probe.py for router/desktop reachability
         state: present
 
     - name: Install psutil via pip (apt version incompatible with Python 3.13)
@@ -224,6 +225,24 @@
     - name: Enable and start krakow-scanner service
       systemd:
         name: krakow-scanner
+        state: started
+        enabled: yes
+        daemon_reload: yes
+
+    # ─── krakow-probes systemd service (router, desktop, …) ──────────────────
+
+    - name: Install krakow-probes service
+      copy:
+        src: "{{ repo_path }}/krakow-probes.service"
+        dest: /etc/systemd/system/krakow-probes.service
+        remote_src: yes
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Enable and start krakow-probes service
+      systemd:
+        name: krakow-probes
         state: started
         enabled: yes
         daemon_reload: yes

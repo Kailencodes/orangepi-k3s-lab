@@ -90,9 +90,36 @@ cd ~/orangepi-k3s-lab && git pull
 sudo systemctl status k3s
 kubectl get nodes
 
-# Network scanner (writes app/network_data.json every 5s, incl. cluster stats)
+# This node's own metrics (writes app/data/krakow.json every 5s)
 sudo systemctl status krakow-scanner
-cat ~/orangepi-k3s-lab/app/network_data.json | head
+
+# Probes for agentless devices — router, desktop (writes app/data/<id>.json)
+sudo systemctl status krakow-probes
+ls ~/orangepi-k3s-lab/app/data/
+```
+
+---
+
+## Fleet — Monitoring More Than One Device
+
+The dashboard is a **fleet view** driven by `app/data/nodes.json`. Each entry is
+one tile. There are two kinds of node:
+
+| kind   | How it's collected | Use for |
+|--------|--------------------|---------|
+| `host` | Device runs the scanner agent and reports its own full stats (CPU/mem/net/uptime). | Linux boxes you control (the Pis, a Linux desktop). |
+| `probe`| The monitor Pi pings + port-scans a `target` IP it can't run code on. | Routers, Windows/Mac desktops, anything agentless. |
+
+**Add an agent node** (e.g. the test Pi) — run on that device:
+```bash
+bash agent-install.sh orangepi@<monitor-pi-ip> recon "Recon — Test Node"
+```
+
+**Add a probe node** (e.g. router/desktop) — just add a line to
+`app/data/nodes.json` on the monitor Pi with its `target` IP; `krakow-probes`
+picks it up automatically:
+```json
+{ "id": "router", "label": "Router / Gateway", "role": "infra", "kind": "probe", "target": "192.168.8.1" }
 ```
 
 ---

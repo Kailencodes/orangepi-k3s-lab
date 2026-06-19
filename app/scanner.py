@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
-"""Krakow network + cluster scanner.
+"""Krakow node scanner.
 
 Runs once per invocation (driven by run_scanner.sh on a 5s loop) and writes a
-single JSON snapshot that the dashboard polls. Every probe is wrapped so a
-failure in one section never blocks the others — the dashboard must always get
-fresh, valid data. The file is written atomically with world-readable perms so
-the nginx pod (a different user, via hostPath) can always read it.
+single JSON snapshot for THIS node into app/data/<node-id>.json. Every probe is
+wrapped so a failure in one section never blocks the others, and the file is
+written atomically with world-readable perms so the nginx pod (a different user,
+via hostPath) and rsync can always read a complete file.
+
+Multi-node: each node identifies itself via KRAKOW_NODE_ID (defaults to the
+hostname). The dashboard Pi runs this directly; remote nodes run the same script
+and rsync their <node-id>.json to the dashboard Pi's app/data/ dir.
 """
 
 import json
@@ -18,12 +22,16 @@ import time
 import psutil
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
-OUTPUT_PATH = os.path.join(APP_DIR, "network_data.json")
+DATA_DIR = os.path.join(APP_DIR, "data")
 
-# K3s installs a kubectl shim here. Fall back to PATH lookup if it moved.
+NODE_ID = os.environ.get("KRAKOW_NODE_ID") or socket.gethostname()
+NODE_LABEL = os.environ.get("KRAKOW_NODE_LABEL", NODE_ID)
+NODE_ROLE = os.environ.get("KRAKOW_NODE_ROLE", "monitor")  # "monitor" | "test"
+OUTPUT_PATH = os.path.join(DATA_DIR, NODE_ID + ".json")
+
 KUBECTL = "/usr/local/bin/kubectl" if os.path.exists("/usr/local/bin/kubectl") else "kubectl"
 KUBECONFIG = os.environ.get("KUBECONFIG", "/home/orangepi/.kube/config")
-CLUSTER_REFRESH_SECS = 25  # kubectl is comparatively heavy; throttle it.
+CLUSTER_REFRESH_SECS = 25
 HISTORY_POINTS = 40
 
 
@@ -75,7 +83,7 @@ def count_connections():
     """Count TCP sockets without root by reading /proc directly.
 
     psutil.net_connections() needs root to map sockets to PIDs; the scanner runs
-    as the unprivileged 'orangepi' user, so we read the kernel tables instead.
+    unprivileged, so we read the kernel tables instead.
     """
     total = 0
     for path in ("/proc/net/tcp", "/proc/net/tcp6"):
@@ -103,12 +111,8 @@ def scan_ports(local_ip):
 
 
 def get_cluster_stats(prev_cluster):
-    """Best-effort K3s stats via kubectl, throttled and cached.
-
-    Reuses the previous snapshot until CLUSTER_REFRESH_SECS has elapsed so we
-    don't spawn kubectl every 5s on a small board. Returns None only if kubectl
-    has never succeeded — the dashboard renders that gracefully.
-    """
+    """Best-effort K3s stats via kubectl, throttled and cached. Returns None if
+    kubectl has never succeeded — the dashboard renders that gracefully."""
     now = time.time()
     if prev_cluster and (now - prev_cluster.get("_ts", 0)) < CLUSTER_REFRESH_SECS:
         return prev_cluster
@@ -135,7 +139,6 @@ def get_cluster_stats(prev_cluster):
             "pods_running": sum(1 for l in pod_lines if " Running" in l),
         }
     except Exception:
-        # Keep the last good reading if we have one; else report unreachable.
         return prev_cluster or {"_ts": now, "reachable": False}
 
 
@@ -150,8 +153,9 @@ def load_previous():
 
 
 def atomic_write(path, payload):
-    """Write then rename so readers never see a half-written file, and ensure
-    the result is world-readable for the nginx container."""
+    """Write then rename so readers never see a half-written file, with 0644
+    perms so the nginx container and rsync can always read it."""
+    os.makedirs(os.path.dirname(path), exist_ok=True)
     tmp = path + ".tmp"
     with open(tmp, "w") as f:
         json.dump(payload, f, indent=2)
@@ -163,7 +167,6 @@ def main():
     prev = load_previous()
     now = time.time()
 
-    # Bandwidth delta vs. the previous snapshot.
     net_io = psutil.net_io_counters()
     upload_speed = download_speed = 0
     prev_ts = prev.get("timestamp")
@@ -183,10 +186,11 @@ def main():
     vm = psutil.virtual_memory()
     data = {
         "timestamp": now,
+        "node": {"id": NODE_ID, "label": NODE_LABEL, "role": NODE_ROLE},
         "system": {
             "ip": local_ip,
             "hostname": socket.gethostname(),
-            "os": "Debian Bookworm / K3s",
+            "os": "Debian Bookworm / K3s" if NODE_ROLE == "monitor" else "Debian / test node",
             "uptime": now - psutil.boot_time(),
         },
         "resources": {
@@ -215,7 +219,7 @@ def main():
             "mac": get_mac(iface),
             "gateway": get_gateway(),
         },
-        "cluster": get_cluster_stats(prev.get("cluster")),
+        "cluster": get_cluster_stats(prev.get("cluster")) if NODE_ROLE == "monitor" else None,
         "history": history,
     }
 

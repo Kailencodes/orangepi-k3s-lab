@@ -4,5 +4,8 @@ actions-runner/
 __pycache__/
 *.pyc
 
-# Scanner runtime output
+# Scanner / probe runtime output (per-node JSON written live on the Pi).
+# Keep the committed nodes.json manifest, ignore everything else in data/.
 app/network_data.json
+app/data/*.json
+!app/data/nodes.json

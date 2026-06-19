@@ -1,0 +1,6 @@
+[
+  { "id": "krakow",  "label": "Krakow — Monitor",   "role": "monitor", "kind": "host" },
+  { "id": "recon",   "label": "Recon — Test Node",  "role": "test",    "kind": "host" },
+  { "id": "desktop", "label": "Desktop PC",         "role": "client",  "kind": "host" },
+  { "id": "router",  "label": "Router / Gateway",   "role": "infra",   "kind": "probe", "target": "192.168.8.1" }
+]

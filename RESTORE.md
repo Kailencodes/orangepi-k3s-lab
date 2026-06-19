@@ -27,7 +27,13 @@ Complete steps to rebuild this project on a fresh SBC.
 ## Step 2 — Clone the Repo
 
 ```bash
-sudo apt update && sudo apt install -y git ansible
+sudo apt update && sudo apt install -y git python3-pip
+# On recent Bookworm images the apt 'ansible' package has broken deps
+# (it pulls an old python3 that conflicts with the installed Python 3.13).
+# Install Ansible via pip instead:
+pip3 install ansible --break-system-packages
+export PATH="$HOME/.local/bin:$PATH"   # so 'ansible-playbook' is on PATH
+
 git clone https://github.com/KailenCodes/orangepi-k3s-lab.git ~/orangepi-k3s-lab
 cd ~/orangepi-k3s-lab
 ```
@@ -40,15 +46,15 @@ This installs everything: swap, log2ram, K3s, Flux CLI, Python packages, the sca
 
 **Run locally on the SBC:**
 ```bash
-ansible-playbook -i "localhost," -c local bootstrap.yml -K
+ansible-playbook -i "localhost," -c local bootstrap.yml --ask-become-pass
 ```
 
 **Or run remotely from another machine** (update `hosts.ini` with the SBC's IP first):
 ```bash
-ansible-playbook -i hosts.ini bootstrap.yml -K
+ansible-playbook -i hosts.ini bootstrap.yml --ask-become-pass
 ```
 
-The playbook will reboot once if it needs to update boot config for cgroup support — then re-run it.
+The playbook will reboot once if it needs to update boot config for cgroup support — then re-run it. On completion it prints the dashboard URL.
 
 ---
 
@@ -61,15 +67,18 @@ kubectl get pods -A
 kubectl get svc -A
 ```
 
-The dashboard should be accessible at `http://<ip>:30080`.
+The dashboard is accessible at `http://<ip>:30080`. Find the Pi's current IP with:
 
-The app image is pulled from: `ghcr.io/KailenCodes/orangepi-k3s-lab:latest`
-
-To rebuild and push the image:
 ```bash
-cd ~/orangepi-k3s-lab/app
-docker build -t ghcr.io/kailencodes/orangepi-k3s-lab:latest .
-docker push ghcr.io/kailencodes/orangepi-k3s-lab:latest
+hostname -I        # the dashboard is on the first address, port 30080
+```
+
+**No image build is required.** The dashboard runs stock `nginx:alpine` and serves
+the files in `app/` directly via a hostPath mount, so updating the UI is just:
+
+```bash
+cd ~/orangepi-k3s-lab && git pull
+# refresh the browser — nginx serves app/index.html live, no rebuild/rollout
 ```
 
 ---
@@ -81,11 +90,36 @@ docker push ghcr.io/kailencodes/orangepi-k3s-lab:latest
 sudo systemctl status k3s
 kubectl get nodes
 
-# Network scanner (writes to app/network_data.json every 5s)
+# This node's own metrics (writes app/data/krakow.json every 5s)
 sudo systemctl status krakow-scanner
 
-# Crontab (scanner.py and stats.sh run every minute)
-crontab -l
+# Probes for agentless devices — router, desktop (writes app/data/<id>.json)
+sudo systemctl status krakow-probes
+ls ~/orangepi-k3s-lab/app/data/
+```
+
+---
+
+## Fleet — Monitoring More Than One Device
+
+The dashboard is a **fleet view** driven by `app/data/nodes.json`. Each entry is
+one tile. There are two kinds of node:
+
+| kind   | How it's collected | Use for |
+|--------|--------------------|---------|
+| `host` | Device runs the scanner agent and reports its own full stats (CPU/mem/net/uptime). | Linux boxes you control (the Pis, a Linux desktop). |
+| `probe`| The monitor Pi pings + port-scans a `target` IP it can't run code on. | Routers, Windows/Mac desktops, anything agentless. |
+
+**Add an agent node** (e.g. the test Pi) — run on that device:
+```bash
+bash agent-install.sh orangepi@<monitor-pi-ip> recon "Recon — Test Node"
+```
+
+**Add a probe node** (e.g. router/desktop) — just add a line to
+`app/data/nodes.json` on the monitor Pi with its `target` IP; `krakow-probes`
+picks it up automatically:
+```json
+{ "id": "router", "label": "Router / Gateway", "role": "infra", "kind": "probe", "target": "192.168.8.1" }
 ```
 
 ---
@@ -98,9 +132,9 @@ crontab -l
 | log2ram | Shell installer | SIZE=128M |
 | K3s | get.k3s.io script | traefik + metrics-server disabled |
 | Flux CLI | fluxcd.io installer | For GitOps manifests |
-| python3-psutil | apt | Required by scanner.py |
-| krakow-scanner | systemd service | Runs scanner.py in a loop |
-| Crontab | Ansible cron module | scanner.py + stats.sh every minute |
+| psutil | pip (`--break-system-packages`) | Required by scanner.py; apt version conflicts with Python 3.13 |
+| krakow-scanner | systemd service | Runs scanner.py every 5s (network + cluster stats) |
+| Dashboard | `nginx:alpine` + hostPath | Serves `app/` directly — no custom image to build |
 
 ---
 

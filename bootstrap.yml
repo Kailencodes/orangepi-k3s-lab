@@ -35,13 +35,19 @@
           - git
           - jq
           - python3
-          - python3-psutil
           - python3-pip
           - ca-certificates
           - gnupg
           - lsb-release
           - rsync
+          - iputils-ping   # required by probe.py for router/desktop reachability
         state: present
+
+    - name: Install psutil via pip (apt version incompatible with Python 3.13)
+      pip:
+        name: psutil
+        state: present
+        extra_args: "--break-system-packages"
 
     # ─── Swap File ──────────────────────────────────────────────────────────
 
@@ -223,24 +229,37 @@
         enabled: yes
         daemon_reload: yes
 
-    # ─── Crontab ─────────────────────────────────────────────────────────────
+    # ─── krakow-probes systemd service (router, desktop, …) ──────────────────
 
-    - name: Set up crontab for orangepi user
+    - name: Install krakow-probes service
+      copy:
+        src: "{{ repo_path }}/krakow-probes.service"
+        dest: /etc/systemd/system/krakow-probes.service
+        remote_src: yes
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Enable and start krakow-probes service
+      systemd:
+        name: krakow-probes
+        state: started
+        enabled: yes
+        daemon_reload: yes
+
+    # ─── Crontab cleanup ─────────────────────────────────────────────────────
+    # The scanner now runs continuously via the krakow-scanner systemd service
+    # (every 5s) and collects cluster stats itself, so the old per-minute cron
+    # jobs are redundant. Remove them if a previous bootstrap installed them.
+
+    - name: Remove deprecated cron jobs
       become_user: "{{ ansible_user }}"
       cron:
-        name: "{{ item.name }}"
-        minute: "{{ item.minute }}"
-        hour: "{{ item.hour }}"
-        job: "{{ item.job }}"
+        name: "{{ item }}"
+        state: absent
       loop:
-        - name: "krakow network scanner"
-          minute: "*"
-          hour: "*"
-          job: "cd {{ repo_path }}/app && /usr/bin/python3 scanner.py"
-        - name: "cluster stats"
-          minute: "*"
-          hour: "*"
-          job: "/bin/bash {{ repo_path }}/stats.sh"
+        - "krakow network scanner"
+        - "cluster stats"
 
     # ─── Shell aliases ────────────────────────────────────────────────────────
 
@@ -263,3 +282,12 @@
         KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"
       register: kubectl_apply
       changed_when: "'configured' in kubectl_apply.stdout or 'created' in kubectl_apply.stdout"
+
+    # ─── Done — show how to reach the dashboard ───────────────────────────────
+
+    - name: Show dashboard URL
+      debug:
+        msg:
+          - "Bootstrap complete."
+          - "Dashboard:  http://{{ ansible_default_ipv4.address }}:30080"
+          - "If that IP looks wrong, run 'hostname -I' to confirm the Pi's current address."

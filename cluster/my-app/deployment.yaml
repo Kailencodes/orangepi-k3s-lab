@@ -15,16 +15,27 @@ spec:
     spec:
       containers:
         - name: web
-          image: ghcr.io/kailencodes/orangepi-k3s-lab:latest
-          imagePullPolicy: Always
+          # Stock nginx — no custom image to build or push. The dashboard is
+          # served straight from the repo's app/ dir via the hostPath mount
+          # below, so a `git pull` + browser refresh is all it takes to update.
+          image: nginx:alpine
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              memory: 64Mi
           volumeMounts:
-            # Mounting the folder to /data inside the pod
-            - name: scanner-data
-              mountPath: /usr/share/nginx/html/data
+            - name: web
+              mountPath: /usr/share/nginx/html
+              readOnly: true
       volumes:
-        - name: scanner-data
+        - name: web
+          # The scanner writes network_data.json into this same dir on the host;
+          # nginx serves it as a static file. One directory, one source of truth.
           hostPath:
             path: /home/orangepi/orangepi-k3s-lab/app
             type: Directory

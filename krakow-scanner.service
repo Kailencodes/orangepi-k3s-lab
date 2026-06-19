@@ -1,10 +1,17 @@
 [Unit]
-Description=Krakow Network Monitor Scanner
+Description=Krakow Network Monitor Scanner (dashboard node)
 After=network.target
 
 [Service]
 Type=simple
 User=orangepi
+# KUBECONFIG + PATH let scanner.py shell out to kubectl for live cluster stats.
+Environment=KUBECONFIG=/home/orangepi/.kube/config
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+# This node's identity on the fleet dashboard.
+Environment=KRAKOW_NODE_ID=krakow
+Environment=KRAKOW_NODE_LABEL=Krakow — Network Monitor
+Environment=KRAKOW_NODE_ROLE=monitor
 ExecStart=/bin/bash /home/orangepi/orangepi-k3s-lab/app/run_scanner.sh
 Restart=always
 RestartSec=5

@@ -228,24 +228,19 @@
         enabled: yes
         daemon_reload: yes
 
-    # ─── Crontab ─────────────────────────────────────────────────────────────
+    # ─── Crontab cleanup ─────────────────────────────────────────────────────
+    # The scanner now runs continuously via the krakow-scanner systemd service
+    # (every 5s) and collects cluster stats itself, so the old per-minute cron
+    # jobs are redundant. Remove them if a previous bootstrap installed them.
 
-    - name: Set up crontab for orangepi user
+    - name: Remove deprecated cron jobs
       become_user: "{{ ansible_user }}"
       cron:
-        name: "{{ item.name }}"
-        minute: "{{ item.minute }}"
-        hour: "{{ item.hour }}"
-        job: "{{ item.job }}"
+        name: "{{ item }}"
+        state: absent
       loop:
-        - name: "krakow network scanner"
-          minute: "*"
-          hour: "*"
-          job: "cd {{ repo_path }}/app && /usr/bin/python3 scanner.py"
-        - name: "cluster stats"
-          minute: "*"
-          hour: "*"
-          job: "/bin/bash {{ repo_path }}/stats.sh"
+        - "krakow network scanner"
+        - "cluster stats"
 
     # ─── Shell aliases ────────────────────────────────────────────────────────
 
@@ -268,3 +263,12 @@
         KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"
       register: kubectl_apply
       changed_when: "'configured' in kubectl_apply.stdout or 'created' in kubectl_apply.stdout"
+
+    # ─── Done — show how to reach the dashboard ───────────────────────────────
+
+    - name: Show dashboard URL
+      debug:
+        msg:
+          - "Bootstrap complete."
+          - "Dashboard:  http://{{ ansible_default_ipv4.address }}:30080"
+          - "If that IP looks wrong, run 'hostname -I' to confirm the Pi's current address."

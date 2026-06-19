@@ -1,2 +1,8 @@
 actions-runner/
+
+# Python
+__pycache__/
+*.pyc
+
+# Scanner runtime output
 app/network_data.json

@@ -1,509 +1,335 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KRAKOW // NETWORK MONITOR</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Archivo:wght@300;400;600;900&display=swap" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Krakow · Network Monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f3efe8; --card:#fffdf9; --ink:#2c2a25; --muted:#8a857a; --faint:#b2ab9d;
+    --line:#e8e1d6; --line2:#f0ebe2;
+    --sage:#8a9a78; --sage-deep:#6f7e5d; --oak:#c2a079; --blue:#8fa6b8; --terra:#c2774f; --amber:#cf9a43;
+    --serif:'Fraunces',Georgia,serif; --mono:'JetBrains Mono',monospace;
+    --shadow:0 1px 2px rgba(54,48,38,.04),0 10px 30px rgba(54,48,38,.05);
+    --shadow-h:0 2px 6px rgba(54,48,38,.06),0 18px 44px rgba(54,48,38,.09);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:'Inter',sans-serif;color:var(--ink);background:var(--bg);min-height:100vh;
+    line-height:1.55;-webkit-font-smoothing:antialiased;
+    background-image:
+      radial-gradient(900px 520px at 8% -8%,rgba(138,154,120,.12),transparent 60%),
+      radial-gradient(820px 520px at 100% 0%,rgba(194,160,121,.12),transparent 58%);
+    background-attachment:fixed;
+  }
+  .wrap{max-width:1320px;margin:0 auto;padding:44px 30px 70px}
 
-        :root {
-            --primary: #000000;
-            --accent: #ff0000;
-            --secondary: #ffffff;
-            --gray: #999999;
-            --light-gray: #e0e0e0;
-            --dark-gray: #333333;
-        }
+  header{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;
+    padding-bottom:26px;margin-bottom:30px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:18px}
+  .logo{width:50px;height:50px;border-radius:15px;flex:none;
+    background:linear-gradient(140deg,var(--sage),var(--oak));
+    box-shadow:0 10px 24px rgba(138,154,120,.28);position:relative}
+  .logo::after{content:"";position:absolute;inset:13px;border-radius:7px;border:2px solid rgba(255,253,249,.9)}
+  .title h1{font-family:var(--serif);font-size:1.85rem;font-weight:500;letter-spacing:-.01em}
+  .title h1 span{color:var(--oak)}
+  .title p{color:var(--muted);font-size:.84rem;font-weight:400;margin-top:1px}
+  .hstatus{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+  .pill{display:inline-flex;align-items:center;gap:9px;padding:8px 16px;border-radius:999px;
+    font-size:.72rem;font-weight:600;letter-spacing:.07em;text-transform:uppercase;
+    color:var(--muted);background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--sage);
+    box-shadow:0 0 0 0 rgba(138,154,120,.55);animation:ping 2.2s infinite}
+  .dot.off{background:var(--terra);animation:none;box-shadow:none}
+  @keyframes ping{0%{box-shadow:0 0 0 0 rgba(138,154,120,.5)}70%{box-shadow:0 0 0 7px rgba(138,154,120,0)}100%{box-shadow:0 0 0 0 rgba(138,154,120,0)}}
+  .clock{font-family:var(--mono);font-size:.78rem;color:var(--faint)}
 
-        body {
-            font-family: 'Archivo', sans-serif;
-            background: var(--primary);
-            color: var(--secondary);
-            overflow-x: hidden;
-            position: relative;
-        }
+  .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:20px}
+  .card{grid-column:span 3;background:var(--card);border:1px solid var(--line);
+    border-radius:20px;padding:24px;position:relative;box-shadow:var(--shadow);
+    transition:box-shadow .3s,transform .3s;animation:rise .6s both}
+  .card:hover{box-shadow:var(--shadow-h);transform:translateY(-3px)}
+  @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+  .span-3{grid-column:span 3}.span-4{grid-column:span 4}.span-5{grid-column:span 5}
+  .span-6{grid-column:span 6}.span-7{grid-column:span 7}.span-8{grid-column:span 8}.span-12{grid-column:span 12}
 
-        /* Noise texture overlay */
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='3.5' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-            opacity: 0.03;
-            pointer-events: none;
-            z-index: 1;
-        }
+  .lbl{font-size:.7rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+  .card-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+  .card-h h3{font-size:.74rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 
-        .scanline {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(
-                to bottom,
-                transparent 50%,
-                rgba(255, 0, 0, 0.02) 51%,
-                transparent 52%
-            );
-            background-size: 100% 4px;
-            pointer-events: none;
-            z-index: 2;
-            animation: scanline 8s linear infinite;
-        }
+  .gauge{display:flex;flex-direction:column;align-items:center;gap:10px}
+  .gauge svg{transform:rotate(-90deg)}
+  .gauge .track{fill:none;stroke:#ece6dc;stroke-width:9}
+  .gauge .arc{fill:none;stroke-width:9;stroke-linecap:round;
+    transition:stroke-dashoffset .8s cubic-bezier(.22,1,.36,1),stroke .4s}
+  .gauge-c{position:relative;width:122px;height:122px}
+  .gauge-v{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .gauge-v b{font-family:var(--serif);font-size:1.9rem;font-weight:500;color:var(--ink)}
+  .gauge-v small{font-size:.62rem;color:var(--faint);margin-top:-2px}
+  .gauge .cap{font-size:.72rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 
-        @keyframes scanline {
-            0% { transform: translateY(0); }
-            100% { transform: translateY(100%); }
-        }
+  .big{font-family:var(--serif);font-size:2.9rem;font-weight:500;line-height:1;color:var(--ink)}
+  .big.accent{color:var(--sage-deep)}
+  .sub{color:var(--muted);font-size:.8rem;margin-top:10px}
 
-        .container {
-            max-width: 1600px;
-            margin: 0 auto;
-            padding: 40px 60px;
-            position: relative;
-            z-index: 3;
-        }
+  .row{display:flex;justify-content:space-between;align-items:center;
+    padding:12px 0;border-bottom:1px solid var(--line2);font-size:.88rem}
+  .row:last-child{border-bottom:none}
+  .row .k{color:var(--muted);font-weight:400}
+  .row .v{font-family:var(--mono);font-weight:500;color:var(--ink)}
+  .v.cy{color:var(--sage-deep)}.v.gr{color:var(--sage-deep)}
 
-        /* Header */
-        .header {
-            border-bottom: 2px solid var(--secondary);
-            padding-bottom: 30px;
-            margin-bottom: 60px;
-            animation: slideDown 0.8s ease-out;
-        }
+  .bw{display:flex;gap:26px;align-items:flex-end}
+  .bw .col{flex:1}
+  .bw .num{font-family:var(--serif);font-size:1.55rem;font-weight:500}
+  .bw .up{color:var(--sage-deep)}.bw .down{color:var(--blue)}
+  .arrow{font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
 
-        @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+  .graph{height:200px;position:relative;margin-top:6px}
+  .graph svg{position:absolute;inset:0;width:100%;height:100%}
+  .legend{display:flex;gap:20px;margin-top:14px;font-size:.74rem;color:var(--muted);align-items:center}
+  .legend i{display:inline-block;width:18px;height:3px;border-radius:2px;margin-right:7px;vertical-align:middle}
+  .legend .peak{margin-left:auto;font-family:var(--mono);color:var(--faint)}
 
-        .header-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            margin-bottom: 15px;
-        }
+  .ports{display:flex;flex-wrap:wrap;gap:9px}
+  .chip{font-family:var(--mono);font-size:.78rem;padding:6px 12px;border-radius:9px;
+    border:1px solid rgba(138,154,120,.4);background:rgba(138,154,120,.1);color:var(--sage-deep)}
+  .empty{color:var(--faint);font-size:.84rem;font-style:italic}
 
-        .site-title {
-            font-family: 'Bebas Neue', sans-serif;
-            font-size: 6rem;
-            letter-spacing: 0.05em;
-            font-weight: 400;
-            line-height: 0.9;
-            position: relative;
-        }
+  .k8s{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .k8s .cell{background:#faf7f1;border:1px solid var(--line);border-radius:14px;padding:18px 14px;text-align:center}
+  .k8s .cell b{font-family:var(--serif);font-size:1.85rem;font-weight:500;display:block;color:var(--ink)}
+  .k8s .cell span{font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
 
-        .site-title span { color: var(--accent); }
+  .skeleton{color:var(--faint);font-size:.86rem;padding:6px 0;animation:pulse 1.4s infinite}
+  @keyframes pulse{0%,100%{opacity:.4}50%{opacity:.85}}
 
-        .status-badge {
-            font-family: 'Archivo', sans-serif;
-            font-size: 0.9rem;
-            font-weight: 300;
-            letter-spacing: 0.2em;
-            text-transform: uppercase;
-            padding: 8px 20px;
-            border: 1px solid var(--secondary);
-            background: transparent;
-            animation: pulse 2s ease-in-out infinite;
-        }
+  footer{margin-top:40px;padding-top:22px;border-top:1px solid var(--line);
+    text-align:center;color:var(--faint);font-size:.72rem;letter-spacing:.1em}
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        .header-subtitle {
-            font-size: 1rem;
-            font-weight: 300;
-            letter-spacing: 0.15em;
-            text-transform: uppercase;
-            color: var(--gray);
-        }
-
-        .header-meta {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.85rem;
-            font-weight: 300;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            margin-top: 20px;
-            color: var(--gray);
-        }
-
-        /* Grid Layout */
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: repeat(12, 1fr);
-            gap: 30px;
-            animation: fadeIn 1s ease-out 0.3s backwards;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .module {
-            border: 1px solid var(--secondary);
-            padding: 30px;
-            position: relative;
-            background: rgba(255, 255, 255, 0.02);
-            transition: all 0.3s ease;
-        }
-
-        .module:hover {
-            background: rgba(255, 255, 255, 0.05);
-            border-color: var(--accent);
-        }
-
-        .module-hero { grid-column: span 12; padding: 50px; border-width: 2px; }
-        .module-large { grid-column: span 6; }
-        .module-medium { grid-column: span 4; }
-        .module-small { grid-column: span 3; }
-
-        .module-title {
-            font-family: 'Bebas Neue', sans-serif;
-            font-size: 2rem;
-            letter-spacing: 0.08em;
-            margin-bottom: 25px;
-            border-bottom: 1px solid var(--dark-gray);
-            padding-bottom: 10px;
-        }
-
-        .data-row, .list-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            padding: 15px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            font-size: 0.95rem;
-        }
-
-        .data-row:last-child, .list-item:last-child { border-bottom: none; }
-
-        .data-label, .list-label {
-            font-weight: 300;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            color: var(--gray);
-            font-size: 0.8rem;
-        }
-
-        .data-value, .list-value {
-            font-weight: 600;
-            letter-spacing: 0.05em;
-            font-family: 'Archivo', monospace;
-            color: var(--secondary);
-        }
-
-        .highlight { color: var(--accent); font-weight: 900; }
-
-        /* Stat numbers */
-        .stat-hero { text-align: center; padding: 40px 20px; }
-        .stat-number {
-            font-family: 'Bebas Neue', sans-serif;
-            font-size: 6rem;
-            line-height: 1;
-            letter-spacing: 0.05em;
-            color: var(--accent);
-            margin-bottom: 10px;
-        }
-        .stat-label { font-size: 0.85rem; font-weight: 300; letter-spacing: 0.15em; text-transform: uppercase; color: var(--gray); }
-
-        .status-dot {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: var(--accent);
-            margin-right: 10px;
-            animation: blink 1.5s ease-in-out infinite;
-        }
-
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-        .status-dot.online { background: #00ff00; }
-        .status-dot.offline { background: var(--accent); }
-
-        .graph-area {
-            height: 180px;
-            background: repeating-linear-gradient(90deg, transparent, transparent 50px, rgba(255, 255, 255, 0.04) 50px, rgba(255, 255, 255, 0.04) 51px);
-            position: relative;
-            margin-top: 20px;
-            overflow: hidden;
-        }
-
-        .graph-legend {
-            display: flex;
-            gap: 20px;
-            margin-top: 10px;
-            font-size: 0.75rem;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            color: var(--gray);
-        }
-
-        .footer { margin-top: 80px; padding-top: 30px; border-top: 1px solid var(--secondary); text-align: center; font-size: 0.75rem; font-weight: 300; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gray); }
-        .loading { text-align: center; padding: 40px; font-family: 'Bebas Neue', sans-serif; font-size: 2rem; letter-spacing: 0.1em; color: var(--gray); animation: fadeInOut 1.5s ease-in-out infinite; }
-        @keyframes fadeInOut { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
-
-        @media (max-width: 1200px) { .module-large, .module-medium, .module-small { grid-column: span 6; } }
-        @media (max-width: 768px) { .site-title { font-size: 3.5rem; } .module-hero, .module-large, .module-medium, .module-small { grid-column: span 12; } .stat-number { font-size: 4rem; } }
-    </style>
+  @media(max-width:1080px){.card,.span-3,.span-4,.span-5,.span-7,.span-8{grid-column:span 6}}
+  @media(max-width:680px){.wrap{padding:28px 16px 44px}.card,.span-3,.span-4,.span-5,.span-6,.span-7,.span-8{grid-column:span 12}.title h1{font-size:1.5rem}}
+</style>
 </head>
 <body>
-    <div class="scanline"></div>
-    <div class="container">
-        <header class="header">
-            <div class="header-top">
-                <h1 class="site-title">KRAKOW<span>//</span></h1>
-                <div class="status-badge">MONITORING</div>
-            </div>
-            <p class="header-subtitle">Orange Pi Zero Network Monitor</p>
-            <div class="header-meta">
-                <span id="device-status">STATUS: <span class="status-dot online"></span>ONLINE</span>
-                <span id="last-update">LAST UPDATE: --:--:--</span>
-            </div>
-        </header>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="logo"></div>
+      <div class="title">
+        <h1>Krakow <span>//</span></h1>
+        <p>Orange Pi Zero 3 · K3s Network Monitor</p>
+      </div>
+    </div>
+    <div class="hstatus">
+      <span class="pill"><span class="dot" id="status-dot"></span><span id="status-text">Connecting</span></span>
+      <span class="clock" id="clock">--:--:--</span>
+    </div>
+  </header>
 
-        <div class="dashboard-grid">
-            <div class="module module-hero" id="hero-stats">
-                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 30px;">
-                    <div class="stat-hero"><div class="stat-number" id="cpu-stat">--</div><div class="stat-label">CPU Usage %</div></div>
-                    <div class="stat-hero"><div class="stat-number" id="mem-stat">--</div><div class="stat-label">Memory %</div></div>
-                    <div class="stat-hero"><div class="stat-number" id="uptime-stat">--</div><div class="stat-label">Days Uptime</div></div>
-                    <div class="stat-hero"><div class="stat-number" id="conn-stat">--</div><div class="stat-label">Connections</div></div>
-                </div>
-            </div>
+  <div class="grid">
+    <div class="card span-3"><div class="gauge">
+      <div class="gauge-c">
+        <svg width="122" height="122"><circle class="track" cx="61" cy="61" r="52"/>
+          <circle class="arc" id="cpu-arc" cx="61" cy="61" r="52" stroke="url(#g1)"/>
+          <defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#8a9a78"/><stop offset="1" stop-color="#c2a079"/></linearGradient></defs></svg>
+        <div class="gauge-v"><b id="cpu-val">--</b><small>percent</small></div>
+      </div><div class="cap">CPU Load</div>
+    </div></div>
 
-            <div class="module module-large" id="system-info">
-                <h2 class="module-title">System</h2>
-                <div class="loading">Loading...</div>
-            </div>
+    <div class="card span-3"><div class="gauge">
+      <div class="gauge-c">
+        <svg width="122" height="122"><circle class="track" cx="61" cy="61" r="52"/>
+          <circle class="arc" id="mem-arc" cx="61" cy="61" r="52" stroke="url(#g2)"/>
+          <defs><linearGradient id="g2" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#8fa6b8"/><stop offset="1" stop-color="#8a9a78"/></linearGradient></defs></svg>
+        <div class="gauge-v"><b id="mem-val">--</b><small id="mem-sub">memory</small></div>
+      </div><div class="cap">Memory</div>
+    </div></div>
 
-            <div class="module module-large" id="network-status">
-                <h2 class="module-title">Network</h2>
-                <div class="loading">Loading...</div>
-            </div>
-
-            <div class="module module-medium" id="network-traffic">
-                <h2 class="module-title">Traffic</h2>
-                <div class="loading">Loading...</div>
-            </div>
-
-            <div class="module module-medium" id="bandwidth">
-                <h2 class="module-title">Bandwidth</h2>
-                <div class="loading">Loading...</div>
-            </div>
-
-            <div class="module module-medium" id="port-scan">
-                <h2 class="module-title">Local Port Scan</h2>
-                <div id="scan-list">
-                    <div class="loading">Scanning...</div>
-                </div>
-            </div>
-
-            <div class="module module-small" id="resources">
-                <h2 class="module-title">Resources</h2>
-                <div class="loading">Loading...</div>
-            </div>
-
-            <div class="module module-small" id="connections">
-                <h2 class="module-title">Conn</h2>
-                <div class="loading">Loading...</div>
-            </div>
-
-            <div class="module module-small" id="processes">
-                <h2 class="module-title">Process</h2>
-                <div class="loading">Loading...</div>
-            </div>
-
-            <div class="module" style="grid-column: span 12;" id="network-graph">
-                <h2 class="module-title">Network Activity</h2>
-                <div class="graph-area" id="graph-canvas"></div>
-                <div class="graph-legend">
-                    <span style="color: var(--accent);">— Upload</span>
-                    <span style="color: rgba(255,255,255,0.5);">— Download</span>
-                    <span id="graph-max" style="margin-left: auto;"></span>
-                </div>
-            </div>
-        </div>
-
-        <footer class="footer">
-            <p>Krakow Network Monitor © 2026 // Orange Pi Zero</p>
-        </footer>
+    <div class="card span-3">
+      <div class="card-h"><h3>Uptime</h3></div>
+      <div class="big accent" id="uptime-days">--</div>
+      <div class="sub" id="uptime-full">days online</div>
     </div>
 
-    <script>
-        const DATA_URL = 'data/network_data.json';
-        const REFRESH_INTERVAL = 5000;
+    <div class="card span-3">
+      <div class="card-h"><h3>Connections</h3></div>
+      <div class="big" id="conn-val">--</div>
+      <div class="sub"><span id="proc-val">--</span> active processes</div>
+    </div>
 
-        function formatBytes(bytes) {
-            if (bytes === 0) return '0 B';
-            const k = 1024;
-            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
-        }
+    <div class="card span-4">
+      <div class="card-h"><h3>Live Bandwidth</h3></div>
+      <div class="bw">
+        <div class="col"><span class="arrow">▲ Upload</span><div class="num up" id="bw-up">-- B/s</div></div>
+        <div class="col"><span class="arrow">▼ Download</span><div class="num down" id="bw-down">-- B/s</div></div>
+      </div>
+    </div>
 
-        function formatUptime(seconds) {
-            const days = Math.floor(seconds / 86400);
-            const hours = Math.floor((seconds % 86400) / 3600);
-            const minutes = Math.floor((seconds % 3600) / 60);
-            return { days, hours, minutes, formatted: `${days}D ${hours}H ${minutes}M` };
-        }
+    <div class="card span-8">
+      <div class="card-h"><h3>System</h3><span class="lbl" id="sys-host">--</span></div>
+      <div id="sys-body"><div class="skeleton">Loading system…</div></div>
+    </div>
 
-        function updateHeroStats(data) {
-            if (data.resources) {
-                document.getElementById('cpu-stat').textContent = Math.round(data.resources.cpu_percent || 0);
-                document.getElementById('mem-stat').textContent = Math.round(data.resources.memory_percent || 0);
-            }
-            if (data.system && data.system.uptime) {
-                const uptime = formatUptime(data.system.uptime);
-                document.getElementById('uptime-stat').textContent = uptime.days;
-            }
-            if (data.connections) {
-                document.getElementById('conn-stat').textContent = data.connections.total || 0;
-            }
-        }
+    <div class="card span-8">
+      <div class="card-h"><h3>Network Activity</h3></div>
+      <div class="graph" id="graph"></div>
+      <div class="legend">
+        <span><i style="background:#8a9a78"></i>Upload</span>
+        <span><i style="background:#8fa6b8"></i>Download</span>
+        <span class="peak" id="graph-peak"></span>
+      </div>
+    </div>
 
-        function updateSystemInfo(data) {
-            const container = document.getElementById('system-info');
-            if (!data.system) return;
-            container.innerHTML = `<h2 class="module-title">System</h2>
-                <div class="data-row"><span class="data-label">Hostname</span><span class="data-value">${data.system.hostname || 'N/A'}</span></div>
-                <div class="data-row"><span class="data-label">Operating System</span><span class="data-value">${data.system.os || 'N/A'}</span></div>
-                <div class="data-row"><span class="data-label">IP Address</span><span class="data-value highlight">[REDACTED]</span></div>
-                <div class="data-row"><span class="data-label">Uptime</span><span class="data-value">${data.system.uptime ? formatUptime(data.system.uptime).formatted : 'N/A'}</span></div>`;
-        }
+    <div class="card span-4">
+      <div class="card-h"><h3>Network</h3></div>
+      <div id="net-body"><div class="skeleton">Loading network…</div></div>
+    </div>
 
-        function updateScanResults(data) {
-            const container = document.getElementById('scan-list');
-            container.innerHTML = '<div class="list-item"><span class="list-label">HIDDEN</span></div>';
-        }
+    <div class="card span-4">
+      <div class="card-h"><h3>K3s Cluster</h3><span class="lbl" id="k8s-state">--</span></div>
+      <div class="k8s">
+        <div class="cell"><b id="k8s-nodes">--</b><span>Nodes Ready</span></div>
+        <div class="cell"><b id="k8s-pods">--</b><span>Pods Running</span></div>
+      </div>
+    </div>
 
-        function updateNetworkStatus(data) {
-            const container = document.getElementById('network-status');
-            if (!data.network) return;
-            const status = data.network.status || 'unknown';
-            container.innerHTML = `<h2 class="module-title">Network</h2>
-                <div class="data-row"><span class="data-label">Status</span><span class="data-value"><span class="status-dot ${status === 'online' ? 'online' : 'offline'}"></span>${status.toUpperCase()}</span></div>
-                <div class="data-row"><span class="data-label">Interface</span><span class="data-value">${data.network.interface || 'N/A'}</span></div>
-                <div class="data-row"><span class="data-label">Gateway</span><span class="data-value highlight">[REDACTED]</span></div>`;
-        }
+    <div class="card span-4">
+      <div class="card-h"><h3>Total Traffic</h3></div>
+      <div class="row"><span class="k">Sent</span><span class="v cy" id="tx-sent">--</span></div>
+      <div class="row"><span class="k">Received</span><span class="v" id="tx-recv">--</span></div>
+      <div class="row"><span class="k">Packets ▲ / ▼</span><span class="v" id="tx-pkts">--</span></div>
+    </div>
 
-        function updateTraffic(data) {
-            const container = document.getElementById('network-traffic');
-            if (!data.traffic) return;
-            container.innerHTML = `<h2 class="module-title">Traffic</h2>
-                <div class="list-item"><span class="list-label">Sent</span><span class="list-value">${formatBytes(data.traffic.bytes_sent || 0)}</span></div>
-                <div class="list-item"><span class="list-label">Received</span><span class="list-value">${formatBytes(data.traffic.bytes_recv || 0)}</span></div>`;
-        }
+    <div class="card span-4">
+      <div class="card-h"><h3>Open Ports</h3></div>
+      <div class="ports" id="ports"><div class="skeleton">Scanning…</div></div>
+    </div>
+  </div>
 
-        function updateBandwidth(data) {
-            const container = document.getElementById('bandwidth');
-            if (!data.bandwidth) return;
-            container.innerHTML = `<h2 class="module-title">Bandwidth</h2>
-                <div class="list-item"><span class="list-label">Upload</span><span class="list-value">${formatBytes(data.bandwidth.upload_speed || 0)}/s</span></div>
-                <div class="list-item"><span class="list-label">Download</span><span class="list-value">${formatBytes(data.bandwidth.download_speed || 0)}/s</span></div>`;
-        }
+  <footer>KRAKOW NETWORK MONITOR · 2026 · ORANGE PI ZERO 3 · K3S</footer>
+</div>
 
-        function updateResources(data) {
-            const container = document.getElementById('resources');
-            if (!data.resources) return;
-            const memUsed = formatBytes(data.resources.memory_used || 0);
-            const memTotal = formatBytes(data.resources.memory_total || 0);
-            container.innerHTML = `<h2 class="module-title">Resources</h2>
-                <div class="list-item"><span class="list-label">CPU</span><span class="list-value">${data.resources.cpu_percent || 0}%</span></div>
-                <div class="list-item"><span class="list-label">MEM</span><span class="list-value">${data.resources.memory_percent || 0}%</span></div>
-                <div class="list-item"><span class="list-label">Used</span><span class="list-value">${memUsed} / ${memTotal}</span></div>
-                <div class="list-item"><span class="list-label">Cores</span><span class="list-value">${data.resources.cpu_cores || '--'}</span></div>`;
-        }
+<script>
+const DATA_URL='network_data.json';
+const REFRESH=3000, C=2*Math.PI*52;
+const $=id=>document.getElementById(id);
+const fmtBytes=(b,p='')=>{if(!b||b<1)return'0 B'+p;const k=1024,u=['B','KB','MB','GB','TB'];
+  const i=Math.min(u.length-1,Math.floor(Math.log(b)/Math.log(k)));
+  return (b/Math.pow(k,i)).toFixed(i?1:0)+' '+u[i]+p;};
 
-        function updateConnections(data) {
-            const container = document.getElementById('connections');
-            if (!data.connections) return;
-            container.innerHTML = `<h2 class="module-title">Conn</h2>
-                <div class="list-item"><span class="list-label">Total</span><span class="list-value">${data.connections.total || 0}</span></div>`;
-        }
+function setGauge(arc,val,label){
+  const v=Math.max(0,Math.min(100,val||0));
+  arc.style.strokeDasharray=C;
+  arc.style.strokeDashoffset=C*(1-v/100);
+  label.textContent=Math.round(v);
+}
+function fmtUptime(s){
+  const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);
+  return{d,full:`${d}d ${h}h ${m}m`};
+}
+function renderGraph(history){
+  const el=$('graph');
+  if(!history||history.length<2){el.innerHTML='<div class="skeleton">Gathering data…</div>';return;}
+  const max=Math.max(1,...history.map(h=>Math.max(h.up,h.down)));
+  const n=history.length, X=i=>(i/(n-1)*100).toFixed(2), Y=v=>(98-v/max*88).toFixed(2);
+  const up=history.map((h,i)=>`${X(i)},${Y(h.up)}`).join(' ');
+  const dn=history.map((h,i)=>`${X(i)},${Y(h.down)}`).join(' ');
+  el.innerHTML=`<svg viewBox="0 0 100 100" preserveAspectRatio="none">
+    <defs>
+      <linearGradient id="fu" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(138,154,120,.30)"/><stop offset="1" stop-color="rgba(138,154,120,0)"/></linearGradient>
+      <linearGradient id="fd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(143,166,184,.26)"/><stop offset="1" stop-color="rgba(143,166,184,0)"/></linearGradient>
+    </defs>
+    <polygon points="${up} 100,100 0,100" fill="url(#fu)"/>
+    <polyline points="${up}" fill="none" stroke="#8a9a78" stroke-width="0.8" vector-effect="non-scaling-stroke"/>
+    <polygon points="${dn} 100,100 0,100" fill="url(#fd)"/>
+    <polyline points="${dn}" fill="none" stroke="#8fa6b8" stroke-width="0.8" vector-effect="non-scaling-stroke"/>
+  </svg>`;
+  $('graph-peak').textContent='peak '+fmtBytes(max,'/s');
+}
+function setStatus(online){
+  $('status-dot').className='dot'+(online?'':' off');
+  $('status-text').textContent=online?'Online':'Offline';
+}
+function render(d){
+  const r=d.resources||{}, cpu=r.cpu_percent||0, mem=r.memory_percent||0;
+  setGauge($('cpu-arc'),cpu,$('cpu-val'));
+  $('cpu-arc').style.stroke=cpu<88?'url(#g1)':'var(--terra)';
+  setGauge($('mem-arc'),mem,$('mem-val'));
+  $('mem-arc').style.stroke=mem<88?'url(#g2)':'var(--terra)';
+  $('mem-sub').textContent='%';
 
-        function updateProcesses(data) {
-            const container = document.getElementById('processes');
-            container.innerHTML = `<h2 class="module-title">Process</h2>
-                <div class="list-item"><span class="list-label">Active</span><span class="list-value">${data.processes?.active || '--'}</span></div>`;
-        }
+  if(d.system){
+    const u=fmtUptime(d.system.uptime||0);
+    $('uptime-days').textContent=u.d;
+    $('uptime-full').textContent=u.full;
+    $('sys-host').textContent=d.system.hostname||'';
+    $('sys-body').innerHTML=`
+      <div class="row"><span class="k">Hostname</span><span class="v">${d.system.hostname||'N/A'}</span></div>
+      <div class="row"><span class="k">IP Address</span><span class="v cy">${d.system.ip||'N/A'}</span></div>
+      <div class="row"><span class="k">Operating System</span><span class="v">${d.system.os||'N/A'}</span></div>
+      <div class="row"><span class="k">CPU Cores</span><span class="v">${r.cpu_cores||'--'}</span></div>
+      <div class="row"><span class="k">Memory</span><span class="v">${fmtBytes(r.memory_used)} / ${fmtBytes(r.memory_total)}</span></div>`;
+  }
 
-        function updateNetworkGraph(data) {
-            const canvas = document.getElementById('graph-canvas');
-            const maxLabel = document.getElementById('graph-max');
-            if (!data.history || data.history.length < 2) return;
+  $('conn-val').textContent=(d.connections&&d.connections.total)||0;
+  $('proc-val').textContent=(d.processes&&d.processes.active)||'--';
 
-            const history = data.history;
-            const maxVal = Math.max(1, ...history.map(h => Math.max(h.up, h.down)));
-            const n = history.length;
+  if(d.bandwidth){
+    $('bw-up').textContent=fmtBytes(d.bandwidth.upload_speed,'/s');
+    $('bw-down').textContent=fmtBytes(d.bandwidth.download_speed,'/s');
+  }
 
-            const toX = i => ((i / (n - 1)) * 100).toFixed(2);
-            const toY = v => (100 - (v / maxVal) * 90 - 5).toFixed(2);
+  if(d.network){
+    const on=(d.network.status||'')==='online';
+    $('net-body').innerHTML=`
+      <div class="row"><span class="k">Status</span><span class="v ${on?'gr':''}">${(d.network.status||'unknown').toUpperCase()}</span></div>
+      <div class="row"><span class="k">Interface</span><span class="v">${d.network.interface||'N/A'}</span></div>
+      <div class="row"><span class="k">Gateway</span><span class="v cy">${d.network.gateway||'N/A'}</span></div>
+      <div class="row"><span class="k">MAC</span><span class="v">${d.network.mac||'N/A'}</span></div>`;
+  }
 
-            const upPoints = history.map((h, i) => `${toX(i)},${toY(h.up)}`).join(' ');
-            const downPoints = history.map((h, i) => `${toX(i)},${toY(h.down)}`).join(' ');
+  if(d.traffic){
+    $('tx-sent').textContent=fmtBytes(d.traffic.bytes_sent);
+    $('tx-recv').textContent=fmtBytes(d.traffic.bytes_recv);
+    $('tx-pkts').textContent=`${(d.traffic.packets_sent||0).toLocaleString()} / ${(d.traffic.packets_recv||0).toLocaleString()}`;
+  }
 
-            // Build filled area paths
-            const upAreaClose = ` ${toX(n - 1)},100 0,100`;
-            const downAreaClose = ` ${toX(n - 1)},100 0,100`;
+  const c=d.cluster;
+  if(c&&c.reachable){
+    $('k8s-state').textContent='healthy';$('k8s-state').style.color='var(--sage-deep)';
+    $('k8s-nodes').textContent=`${c.nodes_ready}/${c.nodes_total}`;
+    $('k8s-pods').textContent=`${c.pods_running}/${c.pods_total}`;
+  }else{
+    $('k8s-state').textContent='unreachable';$('k8s-state').style.color='var(--faint)';
+    $('k8s-nodes').textContent='—';$('k8s-pods').textContent='—';
+  }
 
-            canvas.innerHTML = `<svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;top:0;left:0;">
-                <polygon points="${upPoints} ${upAreaClose}" fill="rgba(255,0,0,0.1)" />
-                <polyline points="${upPoints}" fill="none" stroke="var(--accent)" stroke-width="0.6" vector-effect="non-scaling-stroke" />
-                <polygon points="${downPoints} ${downAreaClose}" fill="rgba(255,255,255,0.05)" />
-                <polyline points="${downPoints}" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="0.6" vector-effect="non-scaling-stroke" />
-            </svg>`;
+  const ports=d.scan_results||[];
+  $('ports').innerHTML=ports.length
+    ? ports.map(p=>`<span class="chip">:${p.port}</span>`).join('')
+    : '<span class="empty">No open ports detected</span>';
 
-            if (maxLabel) maxLabel.textContent = `PEAK: ${formatBytes(maxVal)}/s`;
-        }
-
-        async function fetchData() {
-            try {
-                const response = await fetch(DATA_URL);
-                if (!response.ok) throw new Error('Failed to fetch');
-                const data = await response.json();
-                
-                updateHeroStats(data);
-                updateSystemInfo(data);
-                updateNetworkStatus(data);
-                updateTraffic(data);
-                updateBandwidth(data);
-                updateResources(data);
-                updateConnections(data);
-                updateProcesses(data);
-                updateScanResults(data);
-                updateNetworkGraph(data);
-                
-                const now = new Date();
-                document.getElementById('last-update').textContent = `LAST UPDATE: ${now.toLocaleTimeString()}`;
-                const statusText = data.network?.status || 'unknown';
-                document.getElementById('device-status').innerHTML = `STATUS: <span class="status-dot ${statusText === 'online' ? 'online' : 'offline'}"></span>${statusText.toUpperCase()}`;
-            } catch (error) {
-                console.error('Fetch error:', error);
-                document.getElementById('last-update').textContent = `LAST UPDATE: ERROR`;
-            }
-        }
-
-        fetchData();
-        setInterval(fetchData, REFRESH_INTERVAL);
-    </script>
+  renderGraph(d.history);
+}
+async function tick(){
+  try{
+    const res=await fetch(DATA_URL+'?t='+Date.now(),{cache:'no-store'});
+    if(!res.ok)throw 0;
+    const d=await res.json();
+    const fresh=!d.timestamp||(Date.now()/1000-d.timestamp)<30;
+    setStatus(fresh);render(d);
+  }catch(e){setStatus(false);}
+  $('clock').textContent=new Date().toLocaleTimeString();
+}
+tick();setInterval(tick,REFRESH);
+setInterval(()=>$('clock').textContent=new Date().toLocaleTimeString(),1000);
+</script>
 </body>
 </html>

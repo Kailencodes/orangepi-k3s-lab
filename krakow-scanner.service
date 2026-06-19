@@ -5,6 +5,9 @@ After=network.target
 [Service]
 Type=simple
 User=orangepi
+# KUBECONFIG + PATH let scanner.py shell out to kubectl for live cluster stats.
+Environment=KUBECONFIG=/home/orangepi/.kube/config
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
 ExecStart=/bin/bash /home/orangepi/orangepi-k3s-lab/app/run_scanner.sh
 Restart=always
 RestartSec=5
